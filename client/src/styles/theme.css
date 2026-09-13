@@ -1,0 +1,195 @@
+/* ==========================================================================
+   Cash Ledger — Design Tokens
+   A real ledger's visual language: ink, ruled paper, tabular numerals.
+   Not a SaaS card kit — rows, rules, and right-aligned figures.
+   ========================================================================== */
+
+:root {
+  --ink-navy: #101b2d;
+  --ink-navy-soft: #1c2c45;
+  --paper: #efeae0;
+  --paper-raised: #f7f4ec;
+  --rule: #d8d2c2;
+  --rule-strong: #b9b09a;
+  --emerald: #1f6f54;
+  --emerald-soft: #e4efe9;
+  --rust: #a23b2e;
+  --rust-soft: #f3e4e1;
+  --gold: #b98f3d;
+  --ink-text: #1a1f27;
+  --ink-text-muted: #6b6455;
+
+  --font-display: 'Fraunces', 'Georgia', serif;
+  --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+  --font-body: 'Inter', -apple-system, sans-serif;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink-text);
+  font-family: var(--font-body);
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Buttons: squared-off, ink-stamp feel, not bootstrap-pill defaults ---- */
+.btn-ledger {
+  background: var(--ink-navy);
+  color: var(--paper);
+  border: 1px solid var(--ink-navy);
+  border-radius: 2px;
+  padding: 0.7rem 1.4rem;
+  font-family: var(--font-body);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.btn-ledger:hover {
+  background: var(--ink-navy-soft);
+  color: var(--paper);
+}
+.btn-ledger:active {
+  transform: scale(0.98);
+}
+.btn-ledger:disabled {
+  opacity: 0.5;
+}
+
+/* ---- Form inputs: underline style, ledger-entry feel ---- */
+.input-ledger {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--rule-strong);
+  border-radius: 0;
+  padding: 0.5rem 0.1rem;
+  font-family: var(--font-body);
+  color: var(--ink-text);
+  width: 100%;
+}
+.input-ledger:focus {
+  outline: none;
+  border-bottom: 2px solid var(--ink-navy);
+  box-shadow: none;
+}
+
+/* ---- Ledger row: the core content pattern, replaces "card grid" ---- */
+.ledger-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.ledger-row:last-child {
+  border-bottom: none;
+}
+.ledger-row-label {
+  color: var(--ink-text-muted);
+  font-size: 0.92rem;
+}
+.ledger-row-value {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+.value-positive { color: var(--emerald); }
+.value-negative { color: var(--rust); }
+.value-neutral { color: var(--ink-text); }
+
+/* ---- Single orchestrated entrance: ledger rows write themselves in ---- */
+@keyframes writeIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.write-in {
+  animation: writeIn 0.45s ease forwards;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .write-in { animation: none; opacity: 1; }
+}
+
+/* ---- Ink line draw-in for the auth panel ---- */
+@keyframes drawLine {
+  to { stroke-dashoffset: 0; }
+}
+.ink-line-path {
+  stroke-dasharray: 900;
+  stroke-dashoffset: 900;
+  animation: drawLine 1.8s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ink-line-path { stroke-dashoffset: 0; animation: none; }
+}
+
+/* ---- Sidebar nav ---- */
+.sidebar-ledger {
+  background: var(--ink-navy);
+  color: var(--paper);
+  min-height: 100vh;
+}
+
+/* Mobile: sidebar becomes a fixed off-canvas drawer, hidden until opened */
+@media (max-width: 767.98px) {
+  .sidebar-ledger {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 40;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+  .sidebar-ledger.sidebar-open {
+    transform: translateX(0);
+  }
+}
+.sidebar-link {
+  color: rgba(239, 234, 224, 0.65);
+  text-decoration: none;
+  display: block;
+  padding: 0.6rem 0;
+  font-size: 0.92rem;
+  border-bottom: 1px solid rgba(239, 234, 224, 0.08);
+  transition: color 0.15s ease;
+}
+.sidebar-link:hover,
+.sidebar-link.active {
+  color: var(--paper);
+}
+
+.card-paper {
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+}
+
+.eyebrow-tab {
+  display: inline-block;
+  background: var(--gold);
+  color: var(--ink-navy);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 2px;
+}
+
+/* ---- Toast entrance ---- */
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.toast-ledger {
+  animation: toastIn 0.2s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast-ledger { animation: none; }
+}
