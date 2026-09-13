@@ -9,8 +9,8 @@ export const AuthProvider = ({ children }) => {
 
   // On first load, check if a session already exists from a previous visit
   useEffect(() => {
-    const storedUser = localStorage.getItem('cashledger_user');
-    const token = localStorage.getItem('cashledger_token');
+    const storedUser = localStorage.getItem('finvault_user');
+    const token = localStorage.getItem('finvault_token');
     if (storedUser && token) {
       setUser(JSON.parse(storedUser));
     }
@@ -20,8 +20,8 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     const response = await loginUser(email, password);
     const { token, user: userData } = response.data;
-    localStorage.setItem('cashledger_token', token);
-    localStorage.setItem('cashledger_user', JSON.stringify(userData));
+    localStorage.setItem('finvault_token', token);
+    localStorage.setItem('finvault_user', JSON.stringify(userData));
     setUser(userData);
     return userData;
   };
@@ -29,15 +29,15 @@ export const AuthProvider = ({ children }) => {
   const register = async (email, password) => {
     const response = await registerUser(email, password);
     const { token, user: userData } = response.data;
-    localStorage.setItem('cashledger_token', token);
-    localStorage.setItem('cashledger_user', JSON.stringify(userData));
+    localStorage.setItem('finvault_token', token);
+    localStorage.setItem('finvault_user', JSON.stringify(userData));
     setUser(userData);
     return userData;
   };
 
   const logout = () => {
-    localStorage.removeItem('cashledger_token');
-    localStorage.removeItem('cashledger_user');
+    localStorage.removeItem('finvault_token');
+    localStorage.removeItem('finvault_user');
     setUser(null);
   };
 
