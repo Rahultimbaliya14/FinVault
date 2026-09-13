@@ -15,7 +15,7 @@ const PageLayout = ({ children }) => {
         className="d-flex d-md-none align-items-center justify-content-between px-4 py-3"
         style={{ background: 'var(--ink-navy)', color: 'var(--paper)', position: 'sticky', top: 0, zIndex: 20 }}
       >
-        <span className="font-display" style={{ fontSize: '1.2rem' }}>Cash Ledger</span>
+        <span className="font-display" style={{ fontSize: '1.2rem' }}>FinVault</span>
         <button
           onClick={() => setMenuOpen(true)}
           aria-label="Open menu"

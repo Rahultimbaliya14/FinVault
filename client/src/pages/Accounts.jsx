@@ -1,8 +1,16 @@
 import { useState, useEffect } from 'react';
 import PageLayout from '../components/PageLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
+import Select from '../components/Select';
 import { useToast } from '../context/ToastContext';
 import { fetchAccounts, createAccount, deleteAccount } from '../api/accounts';
+
+const ACCOUNT_TYPES = [
+  { value: 'savings', label: 'Savings' },
+  { value: 'current', label: 'Current' },
+  { value: 'salary', label: 'Salary' },
+  { value: 'other', label: 'Other' },
+];
 
 const formatCurrency = (amount) => `₹${Math.round(amount || 0).toLocaleString('en-IN')}`;
 
@@ -109,12 +117,7 @@ const Accounts = () => {
               </div>
               <div className="col-md-6">
                 <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Account type</label>
-                <select name="accountType" className="input-ledger" value={form.accountType} onChange={handleChange}>
-                  <option value="savings">Savings</option>
-                  <option value="current">Current</option>
-                  <option value="salary">Salary</option>
-                  <option value="other">Other</option>
-                </select>
+                <Select name="accountType" value={form.accountType} onChange={handleChange} options={ACCOUNT_TYPES} />
               </div>
               <div className="col-md-6">
                 <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Initial balance</label>

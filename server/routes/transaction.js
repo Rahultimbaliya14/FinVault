@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/authenticate');
+const validate = require('../middleware/validate');
+const { createTransactionValidator, updateTransactionValidator } = require('../validators/transactionValidator');
 const {
   createTransaction,
   getTransactions,
@@ -11,10 +13,10 @@ const {
 
 router.use(authenticate);
 
-router.post('/', createTransaction);
+router.post('/', createTransactionValidator, validate, createTransaction);
 router.get('/', getTransactions);
 router.get('/:id', getTransactionById);
-router.put('/:id', updateTransaction);
+router.put('/:id', updateTransactionValidator, validate, updateTransaction);
 router.delete('/:id', deleteTransaction);
 
 module.exports = router;

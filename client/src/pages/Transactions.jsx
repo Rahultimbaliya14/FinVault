@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import PageLayout from '../components/PageLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
+import Select from '../components/Select';
+import { titleCase } from '../utils/formatting';
+import { getCategoriesForType, getPaymentMethodsForType } from '../utils/transactionRules';
 import { useToast } from '../context/ToastContext';
 import { fetchTransactions, createTransaction, deleteTransaction } from '../api/transactions';
 import { fetchAccounts } from '../api/accounts';
@@ -8,8 +11,6 @@ import { fetchAccounts } from '../api/accounts';
 const formatCurrency = (amount) => `₹${Math.round(amount || 0).toLocaleString('en-IN')}`;
 
 const TYPES = ['expense', 'upi_expense', 'income', 'bank_transfer', 'refund'];
-const CATEGORIES = ['food', 'shopping', 'travel', 'entertainment', 'utilities', 'medical', 'fuel', 'online_purchase', 'salary', 'other'];
-const PAYMENT_METHODS = ['cash', 'upi', 'debit_card', 'net_banking', 'other'];
 const CREDIT_TYPES = ['income', 'refund'];
 
 const EMPTY_FORM = {
@@ -66,7 +67,24 @@ const Transactions = () => {
   };
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    if (name === 'type') {
+      // Switching type can make the current category/paymentMethod invalid
+      // (e.g. "Salary" category makes no sense once type becomes "Expense").
+      // Snap both to the first valid option for the newly selected type.
+      const validCategories = getCategoriesForType(value);
+      const validPaymentMethods = getPaymentMethodsForType(value);
+      setForm((f) => ({
+        ...f,
+        type: value,
+        category: validCategories.includes(f.category) ? f.category : validCategories[0],
+        paymentMethod: validPaymentMethods.includes(f.paymentMethod) ? f.paymentMethod : validPaymentMethods[0],
+      }));
+      return;
+    }
+
+    setForm({ ...form, [name]: value });
   };
 
   const handleSubmit = async (e) => {
@@ -132,11 +150,12 @@ const Transactions = () => {
               <div className="row g-3">
                 <div className="col-md-6">
                   <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Account</label>
-                  <select name="accountId" className="input-ledger" value={form.accountId} onChange={handleChange} required>
-                    {accounts.map((acc) => (
-                      <option key={acc._id} value={acc._id}>{acc.bankName} — {acc.accountName}</option>
-                    ))}
-                  </select>
+                  <Select
+                    name="accountId"
+                    value={form.accountId}
+                    onChange={handleChange}
+                    options={accounts.map((acc) => ({ value: acc._id, label: `${acc.bankName} — ${acc.accountName}` }))}
+                  />
                 </div>
                 <div className="col-md-6">
                   <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Amount</label>
@@ -144,21 +163,30 @@ const Transactions = () => {
                 </div>
                 <div className="col-md-4">
                   <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Type</label>
-                  <select name="type" className="input-ledger" value={form.type} onChange={handleChange}>
-                    {TYPES.map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
-                  </select>
+                  <Select
+                    name="type"
+                    value={form.type}
+                    onChange={handleChange}
+                    options={TYPES.map((t) => ({ value: t, label: titleCase(t) }))}
+                  />
                 </div>
                 <div className="col-md-4">
                   <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Category</label>
-                  <select name="category" className="input-ledger" value={form.category} onChange={handleChange}>
-                    {CATEGORIES.map((c) => <option key={c} value={c}>{c.replace('_', ' ')}</option>)}
-                  </select>
+                  <Select
+                    name="category"
+                    value={form.category}
+                    onChange={handleChange}
+                    options={getCategoriesForType(form.type).map((c) => ({ value: c, label: titleCase(c) }))}
+                  />
                 </div>
                 <div className="col-md-4">
                   <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Payment method</label>
-                  <select name="paymentMethod" className="input-ledger" value={form.paymentMethod} onChange={handleChange}>
-                    {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m.replace('_', ' ')}</option>)}
-                  </select>
+                  <Select
+                    name="paymentMethod"
+                    value={form.paymentMethod}
+                    onChange={handleChange}
+                    options={getPaymentMethodsForType(form.type).map((m) => ({ value: m, label: titleCase(m) }))}
+                  />
                 </div>
                 <div className="col-md-6">
                   <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Date</label>
@@ -180,12 +208,16 @@ const Transactions = () => {
       {accounts.length > 0 && (
         <div className="mb-3" style={{ maxWidth: '280px' }}>
           <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Filter by account</label>
-          <select className="input-ledger" value={filterAccount} onChange={handleFilterChange}>
-            <option value="">All accounts</option>
-            {accounts.map((acc) => (
-              <option key={acc._id} value={acc._id}>{acc.bankName} — {acc.accountName}</option>
-            ))}
-          </select>
+          <Select
+            name="filterAccount"
+            value={filterAccount}
+            onChange={(e) => handleFilterChange(e)}
+            placeholder="All accounts"
+            options={[
+              { value: '', label: 'All accounts' },
+              ...accounts.map((acc) => ({ value: acc._id, label: `${acc.bankName} — ${acc.accountName}` })),
+            ]}
+          />
         </div>
       )}
 
@@ -199,12 +231,12 @@ const Transactions = () => {
             <div className="ledger-row" key={tx._id}>
               <div>
                 <div className="ledger-row-label" style={{ color: 'var(--ink-text)', fontWeight: 500 }}>
-                  {tx.description || tx.category.replace('_', ' ')}
+                  {tx.description || titleCase(tx.category)}
                 </div>
                 <div className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--ink-text-muted)' }}>
                   {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                   {' · '}{accountMap[tx.accountId] || 'Account'}
-                  {' · '}{tx.paymentMethod.replace('_', ' ')}
+                  {' · '}{titleCase(tx.paymentMethod)}
                 </div>
               </div>
               <div className="d-flex align-items-center gap-3">

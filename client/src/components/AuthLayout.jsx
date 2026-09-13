@@ -40,7 +40,7 @@ const AuthLayout = ({ eyebrow, title, tagline, children }) => {
         className="d-flex d-md-none align-items-center justify-content-between px-4 py-3"
         style={{ background: 'var(--ink-navy)', color: 'var(--paper)' }}
       >
-        <span className="font-display" style={{ fontSize: '1.2rem' }}>Cash Ledger</span>
+        <span className="font-display" style={{ fontSize: '1.2rem' }}>FinVault</span>
         <span className="eyebrow-tab">{eyebrow}</span>
       </div>
 

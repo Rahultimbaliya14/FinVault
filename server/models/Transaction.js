@@ -49,7 +49,7 @@ const transactionSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ['cash', 'upi', 'debit_card', 'net_banking', 'other'],
+      enum: ['cash', 'upi', 'debit_card', 'net_banking', 'neft', 'rtgs', 'imps', 'cheque', 'other'],
       default: 'other',
     },
     date: {
@@ -65,8 +65,6 @@ const transactionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Speeds up the two most common queries: "all transactions for this
-// account" and "all transactions for this user in a date range"
 transactionSchema.index({ userId: 1, accountId: 1, date: -1 });
 
 module.exports = mongoose.model('Transaction', transactionSchema);

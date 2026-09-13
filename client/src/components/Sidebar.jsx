@@ -36,7 +36,7 @@ const Sidebar = ({ user, logout, menuOpen, onClose }) => {
         style={{ width: '230px', flexShrink: 0 }}
       >
         <div className="d-flex align-items-center justify-content-between mb-5">
-          <span className="font-display" style={{ fontSize: '1.4rem' }}>Cash Ledger</span>
+          <span className="font-display" style={{ fontSize: '1.4rem' }}>FinVault</span>
           <button
             onClick={onClose}
             className="d-md-none"

@@ -1,8 +1,14 @@
 import { useState, useEffect } from 'react';
 import PageLayout from '../components/PageLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
+import Select from '../components/Select';
 import { useToast } from '../context/ToastContext';
 import { fetchLendBorrowRecords, createLendBorrowRecord, addRepayment, deleteLendBorrowRecord } from '../api/lendBorrow';
+
+const LEND_BORROW_TYPES = [
+  { value: 'lend', label: 'I Lent Money (They Owe Me)' },
+  { value: 'borrow', label: 'I Borrowed Money (I Owe Them)' },
+];
 
 const formatCurrency = (amount) => `₹${Math.round(amount || 0).toLocaleString('en-IN')}`;
 
@@ -166,10 +172,7 @@ const Lending = () => {
               </div>
               <div className="col-md-6">
                 <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Type</label>
-                <select name="type" className="input-ledger" value={form.type} onChange={handleChange}>
-                  <option value="lend">I lent money (they owe me)</option>
-                  <option value="borrow">I borrowed money (I owe them)</option>
-                </select>
+                <Select name="type" value={form.type} onChange={handleChange} options={LEND_BORROW_TYPES} />
               </div>
               <div className="col-md-4">
                 <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Amount</label>

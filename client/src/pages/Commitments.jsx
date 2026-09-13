@@ -1,10 +1,17 @@
 import { useState, useEffect } from 'react';
 import PageLayout from '../components/PageLayout';
 import ConfirmDialog from '../components/ConfirmDialog';
+import Select from '../components/Select';
 import { useToast } from '../context/ToastContext';
 import { fetchSIPs, createSIP, deleteSIP } from '../api/sips';
 import { fetchEMIs, createEMI, deleteEMI } from '../api/emis';
 import { fetchAccounts } from '../api/accounts';
+
+const FREQUENCIES = [
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'yearly', label: 'Yearly' },
+];
 
 const formatCurrency = (amount) => `₹${Math.round(amount || 0).toLocaleString('en-IN')}`;
 
@@ -145,18 +152,22 @@ const Commitments = () => {
               </div>
               <div className="col-md-4">
                 <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Frequency</label>
-                <select className="input-ledger" value={sipForm.frequency} onChange={(e) => setSipForm({ ...sipForm, frequency: e.target.value })}>
-                  <option value="monthly">Monthly</option>
-                  <option value="quarterly">Quarterly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
+                <Select
+                  name="frequency"
+                  value={sipForm.frequency}
+                  onChange={(e) => setSipForm({ ...sipForm, frequency: e.target.value })}
+                  options={FREQUENCIES}
+                />
               </div>
               <div className="col-md-4">
                 <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Debit account</label>
-                <select className="input-ledger" value={sipForm.accountId} onChange={(e) => setSipForm({ ...sipForm, accountId: e.target.value })} required>
-                  <option value="">Select account</option>
-                  {accounts.map((a) => <option key={a._id} value={a._id}>{a.bankName} — {a.accountName}</option>)}
-                </select>
+                <Select
+                  name="accountId"
+                  value={sipForm.accountId}
+                  onChange={(e) => setSipForm({ ...sipForm, accountId: e.target.value })}
+                  placeholder="Select account"
+                  options={accounts.map((a) => ({ value: a._id, label: `${a.bankName} — ${a.accountName}` }))}
+                />
               </div>
             </div>
             <button type="submit" className="btn-ledger mt-4" disabled={submittingSip}>
@@ -238,10 +249,13 @@ const Commitments = () => {
               </div>
               <div className="col-md-6">
                 <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Debit account</label>
-                <select className="input-ledger" value={emiForm.accountId} onChange={(e) => setEmiForm({ ...emiForm, accountId: e.target.value })} required>
-                  <option value="">Select account</option>
-                  {accounts.map((a) => <option key={a._id} value={a._id}>{a.bankName} — {a.accountName}</option>)}
-                </select>
+                <Select
+                  name="accountId"
+                  value={emiForm.accountId}
+                  onChange={(e) => setEmiForm({ ...emiForm, accountId: e.target.value })}
+                  placeholder="Select account"
+                  options={accounts.map((a) => ({ value: a._id, label: `${a.bankName} — ${a.accountName}` }))}
+                />
               </div>
             </div>
             <button type="submit" className="btn-ledger mt-4" disabled={submittingEmi}>

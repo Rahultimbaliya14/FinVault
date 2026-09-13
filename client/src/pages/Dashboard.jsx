@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { fetchDashboard } from '../api/dashboard';
 import PageLayout from '../components/PageLayout';
+import ViewToggle from '../components/ViewToggle';
+import { PositionChart, DuesChart, CategoryChart, OverviewChart, TransactionsChart } from '../components/DashboardCharts';
 
 const formatCurrency = (amount) => `₹${Math.round(amount || 0).toLocaleString('en-IN')}`;
 
@@ -8,6 +10,7 @@ const Dashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [viewMode, setViewMode] = useState('ledger'); // 'ledger' | 'chart'
 
   useEffect(() => {
     const load = async () => {
@@ -76,25 +79,53 @@ const Dashboard = () => {
           </p>
         </div>
 
+        <div className="d-flex justify-content-end mb-3">
+          <ViewToggle
+            value={viewMode}
+            onChange={setViewMode}
+            options={[
+              { value: 'ledger', label: 'Ledger' },
+              { value: 'chart', label: 'Chart' },
+            ]}
+          />
+        </div>
+
+        {/* High-level summary chart - one glance at everything, chart mode only */}
+        {viewMode === 'chart' && (
+          <div className="card-paper p-4 mb-4">
+            <h2 className="font-display" style={{ fontSize: '1.15rem', marginBottom: '0.5rem' }}>
+              Overview
+            </h2>
+            <p style={{ color: 'var(--ink-text-muted)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+              How much of your money is free to spend versus already spoken for.
+            </p>
+            <OverviewChart availableFunds={availableFunds} totalPlannedCommitments={totalPlannedCommitments} />
+          </div>
+        )}
+
         <div className="row g-4">
-          {/* Financial position ledger */}
+          {/* Financial position */}
           <div className="col-lg-6">
             <div className="card-paper p-4">
               <h2 className="font-display" style={{ fontSize: '1.15rem', marginBottom: '1rem' }}>
                 Your position
               </h2>
-              {positionRows.map((row, i) => (
-                <div
-                  className="ledger-row write-in"
-                  key={row.label}
-                  style={{ animationDelay: `${i * 0.06}s` }}
-                >
-                  <span className="ledger-row-label">{row.label}</span>
-                  <span className={`ledger-row-value value-${row.tone}`}>
-                    {formatCurrency(row.value)}
-                  </span>
-                </div>
-              ))}
+              {viewMode === 'chart' ? (
+                <PositionChart rows={positionRows} />
+              ) : (
+                positionRows.map((row, i) => (
+                  <div
+                    className="ledger-row write-in"
+                    key={row.label}
+                    style={{ animationDelay: `${i * 0.06}s` }}
+                  >
+                    <span className="ledger-row-label">{row.label}</span>
+                    <span className={`ledger-row-value value-${row.tone}`}>
+                      {formatCurrency(row.value)}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -105,17 +136,21 @@ const Dashboard = () => {
                 Upcoming dues
               </h2>
               {upcomingDues && upcomingDues.length > 0 ? (
-                upcomingDues.slice(0, 7).map((due, i) => (
-                  <div className="ledger-row write-in" key={due.refId} style={{ animationDelay: `${i * 0.06}s` }}>
-                    <div>
-                      <div className="ledger-row-label">{due.label}</div>
-                      <div className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--ink-text-muted)' }}>
-                        {due.dueDate ? new Date(due.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'No date set'}
+                viewMode === 'chart' ? (
+                  <DuesChart dues={upcomingDues} />
+                ) : (
+                  upcomingDues.slice(0, 7).map((due, i) => (
+                    <div className="ledger-row write-in" key={due.refId} style={{ animationDelay: `${i * 0.06}s` }}>
+                      <div>
+                        <div className="ledger-row-label">{due.label}</div>
+                        <div className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--ink-text-muted)' }}>
+                          {due.dueDate ? new Date(due.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'No date set'}
+                        </div>
                       </div>
+                      <span className="ledger-row-value value-negative">{formatCurrency(due.amount)}</span>
                     </div>
-                    <span className="ledger-row-value value-negative">{formatCurrency(due.amount)}</span>
-                  </div>
-                ))
+                  ))
+                )
               ) : (
                 <p style={{ color: 'var(--ink-text-muted)', fontSize: '0.9rem' }}>Nothing due. Clean slate.</p>
               )}
@@ -145,14 +180,18 @@ const Dashboard = () => {
                 Spending by category
               </h2>
               {categoryWiseExpenses && Object.keys(categoryWiseExpenses).length > 0 ? (
-                Object.entries(categoryWiseExpenses)
-                  .sort((a, b) => b[1] - a[1])
-                  .map(([category, amount], i) => (
-                    <div className="ledger-row write-in" key={category} style={{ animationDelay: `${i * 0.06}s` }}>
-                      <span className="ledger-row-label text-capitalize">{category.replace('_', ' ')}</span>
-                      <span className="ledger-row-value value-neutral">{formatCurrency(amount)}</span>
-                    </div>
-                  ))
+                viewMode === 'chart' ? (
+                  <CategoryChart categoryData={categoryWiseExpenses} />
+                ) : (
+                  Object.entries(categoryWiseExpenses)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([category, amount], i) => (
+                      <div className="ledger-row write-in" key={category} style={{ animationDelay: `${i * 0.06}s` }}>
+                        <span className="ledger-row-label text-capitalize">{category.replace('_', ' ')}</span>
+                        <span className="ledger-row-value value-neutral">{formatCurrency(amount)}</span>
+                      </div>
+                    ))
+                )
               ) : (
                 <p style={{ color: 'var(--ink-text-muted)', fontSize: '0.9rem' }}>Nothing logged this month yet.</p>
               )}
@@ -166,17 +205,21 @@ const Dashboard = () => {
                 Recent entries
               </h2>
               {recentTransactions && recentTransactions.length > 0 ? (
-                recentTransactions.slice(0, 7).map((tx, i) => (
-                  <div className="ledger-row write-in" key={tx._id} style={{ animationDelay: `${i * 0.06}s` }}>
-                    <div>
-                      <div className="ledger-row-label">{tx.description || tx.category}</div>
-                      <div className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--ink-text-muted)' }}>
-                        {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                viewMode === 'chart' ? (
+                  <TransactionsChart transactions={recentTransactions} />
+                ) : (
+                  recentTransactions.slice(0, 7).map((tx, i) => (
+                    <div className="ledger-row write-in" key={tx._id} style={{ animationDelay: `${i * 0.06}s` }}>
+                      <div>
+                        <div className="ledger-row-label">{tx.description || tx.category}</div>
+                        <div className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--ink-text-muted)' }}>
+                          {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </div>
                       </div>
+                      <span className="ledger-row-value value-neutral">{formatCurrency(tx.amount)}</span>
                     </div>
-                    <span className="ledger-row-value value-neutral">{formatCurrency(tx.amount)}</span>
-                  </div>
-                ))
+                  ))
+                )
               ) : (
                 <p style={{ color: 'var(--ink-text-muted)', fontSize: '0.9rem' }}>No transactions recorded yet.</p>
               )}
