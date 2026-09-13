@@ -18,15 +18,49 @@ const app = express();
 // Connect to MongoDB
 connectDB();
 
-const allowedOrigins = [
-  'http://localhost:5173',
-  process.env.FRONTEND_URL,
-].filter(Boolean);
+app.use((req, res, next) => {
 
-app.use(cors({
-  origin: allowedOrigins,
-  credentials: true,
-}));
+  const isDev = process.env.DEVELOPMENT === 'true';
+  if (!isDev) {
+    const origin = req.headers.origin;
+    if (!origin) {
+      return res.status(403).send('Direct browser access not allowed');
+    }
+  }
+  
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+    } else {
+        next();
+    }
+});
+
+
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
+  : ['https://rahultimbaliya14.github.io'];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like Postman or browser direct access)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'X-Requested-With', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
+
 app.use(express.json());
 
 // Routes
