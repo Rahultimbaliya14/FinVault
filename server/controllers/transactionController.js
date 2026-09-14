@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Transaction = require('../models/Transaction');
 const BankAccount = require('../models/BankAccount');
 
@@ -7,6 +8,68 @@ const BankAccount = require('../models/BankAccount');
 const verifyAccountOwnership = async (accountId, userId) => {
   const account = await BankAccount.findOne({ _id: accountId, userId });
   return account;
+};
+
+// POST /api/v1/transactions/transfer - move money between two of the
+// user's OWN accounts. Creates two linked records: a debit on the
+// source account and a credit on the destination account, sharing a
+// transferGroupId so they display and delete together.
+exports.createTransfer = async (req, res) => {
+  try {
+    const { fromAccountId, toAccountId, amount, date, description } = req.body;
+
+    if (fromAccountId === toAccountId) {
+      return res.status(400).json({ message: 'Source and destination accounts must be different' });
+    }
+
+    const [fromAccount, toAccount] = await Promise.all([
+      verifyAccountOwnership(fromAccountId, req.user.id),
+      verifyAccountOwnership(toAccountId, req.user.id),
+    ]);
+
+    if (!fromAccount || !toAccount) {
+      return res.status(404).json({ message: 'One or both accounts were not found' });
+    }
+
+    const transferGroupId = new mongoose.Types.ObjectId();
+    const transferDate = date ? new Date(date) : new Date();
+
+    // Create the debit (source) first. If the credit fails to save,
+    // roll the debit back manually rather than leaving one half orphaned.
+    const outTransaction = await Transaction.create({
+      userId: req.user.id,
+      accountId: fromAccountId,
+      amount,
+      type: 'transfer_out',
+      category: 'other',
+      paymentMethod: 'other',
+      date: transferDate,
+      description: description ? `Transfer to ${toAccount.accountName}: ${description}` : `Transfer to ${toAccount.accountName}`,
+      transferGroupId,
+    });
+
+    try {
+      const inTransaction = await Transaction.create({
+        userId: req.user.id,
+        accountId: toAccountId,
+        amount,
+        type: 'transfer_in',
+        category: 'other',
+        paymentMethod: 'other',
+        date: transferDate,
+        description: description ? `Transfer from ${fromAccount.accountName}: ${description}` : `Transfer from ${fromAccount.accountName}`,
+        transferGroupId,
+      });
+
+      res.status(201).json({ message: 'Transfer completed', outTransaction, inTransaction });
+    } catch (innerError) {
+      // Second half failed - undo the first half so accounts stay balanced
+      await Transaction.findByIdAndDelete(outTransaction._id);
+      throw innerError;
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to complete transfer', error: error.message });
+  }
 };
 
 // POST /api/v1/transactions
@@ -107,7 +170,7 @@ exports.updateTransaction = async (req, res) => {
 // DELETE /api/v1/transactions/:id
 exports.deleteTransaction = async (req, res) => {
   try {
-    const transaction = await Transaction.findOneAndDelete({
+    const transaction = await Transaction.findOne({
       _id: req.params.id,
       userId: req.user.id,
     });
@@ -116,6 +179,17 @@ exports.deleteTransaction = async (req, res) => {
       return res.status(404).json({ message: 'Transaction not found' });
     }
 
+    // If this is one half of a transfer, delete both halves together -
+    // leaving one side alone would silently unbalance both accounts.
+    if (transaction.transferGroupId) {
+      await Transaction.deleteMany({
+        transferGroupId: transaction.transferGroupId,
+        userId: req.user.id,
+      });
+      return res.status(200).json({ message: 'Transfer deleted (both linked entries removed)' });
+    }
+
+    await Transaction.findByIdAndDelete(transaction._id);
     res.status(200).json({ message: 'Transaction deleted' });
   } catch (error) {
     res.status(500).json({ message: 'Failed to delete transaction', error: error.message });

@@ -5,13 +5,13 @@ import Select from '../components/Select';
 import { titleCase } from '../utils/formatting';
 import { getCategoriesForType, getPaymentMethodsForType } from '../utils/transactionRules';
 import { useToast } from '../context/ToastContext';
-import { fetchTransactions, createTransaction, deleteTransaction } from '../api/transactions';
+import { fetchTransactions, createTransaction, createTransfer, deleteTransaction } from '../api/transactions';
 import { fetchAccounts } from '../api/accounts';
 
 const formatCurrency = (amount) => `₹${Math.round(amount || 0).toLocaleString('en-IN')}`;
 
 const TYPES = ['expense', 'upi_expense', 'income', 'bank_transfer', 'refund'];
-const CREDIT_TYPES = ['income', 'refund'];
+const CREDIT_TYPES = ['income', 'refund', 'transfer_in'];
 
 const EMPTY_FORM = {
   accountId: '',
@@ -19,6 +19,14 @@ const EMPTY_FORM = {
   type: 'expense',
   category: 'other',
   paymentMethod: 'upi',
+  date: new Date().toISOString().slice(0, 10),
+  description: '',
+};
+
+const EMPTY_TRANSFER_FORM = {
+  fromAccountId: '',
+  toAccountId: '',
+  amount: '',
   date: new Date().toISOString().slice(0, 10),
   description: '',
 };
@@ -32,8 +40,11 @@ const Transactions = () => {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const [showTransferForm, setShowTransferForm] = useState(false);
+  const [transferForm, setTransferForm] = useState(EMPTY_TRANSFER_FORM);
+  const [submittingTransfer, setSubmittingTransfer] = useState(false);
   const [filterAccount, setFilterAccount] = useState('');
-  const [confirmState, setConfirmState] = useState({ open: false, txId: null });
+  const [confirmState, setConfirmState] = useState({ open: false, txId: null, isTransfer: false });
 
   const accountMap = Object.fromEntries(accounts.map((a) => [a._id, `${a.bankName} — ${a.accountName}`]));
 
@@ -107,15 +118,39 @@ const Transactions = () => {
     }
   };
 
+  const handleTransferChange = (e) => {
+    setTransferForm({ ...transferForm, [e.target.name]: e.target.value });
+  };
+
+  const handleTransferSubmit = async (e) => {
+    e.preventDefault();
+    if (transferForm.fromAccountId === transferForm.toAccountId) {
+      showToast('Choose two different accounts.', 'error');
+      return;
+    }
+    setSubmittingTransfer(true);
+    try {
+      await createTransfer({ ...transferForm, amount: Number(transferForm.amount) });
+      setTransferForm(EMPTY_TRANSFER_FORM);
+      setShowTransferForm(false);
+      loadData();
+      showToast('Transfer completed', 'success');
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Could not complete transfer.', 'error');
+    } finally {
+      setSubmittingTransfer(false);
+    }
+  };
+
   const handleConfirmDelete = async () => {
     try {
       await deleteTransaction(confirmState.txId);
       loadData();
-      showToast('Transaction deleted', 'success');
+      showToast(confirmState.isTransfer ? 'Transfer deleted' : 'Transaction deleted', 'success');
     } catch (err) {
       showToast('Could not delete transaction.', 'error');
     } finally {
-      setConfirmState({ open: false, txId: null });
+      setConfirmState({ open: false, txId: null, isTransfer: false });
     }
   };
 
@@ -128,9 +163,17 @@ const Transactions = () => {
             Every entry, logged
           </h1>
         </div>
-        <button className="btn-ledger" onClick={() => setShowForm(!showForm)}>
-          {showForm ? 'Cancel' : '+ Add transaction'}
-        </button>
+        <div className="d-flex gap-2 flex-wrap">
+          <button className="btn-ledger" onClick={() => { setShowForm(!showForm); setShowTransferForm(false); }}>
+            {showForm ? 'Cancel' : '+ Add transaction'}
+          </button>
+          <button
+            onClick={() => { setShowTransferForm(!showTransferForm); setShowForm(false); }}
+            style={{ background: 'none', border: '1px solid var(--ink-navy)', borderRadius: '2px', padding: '0.7rem 1.4rem', color: 'var(--ink-navy)' }}
+          >
+            {showTransferForm ? 'Cancel' : '⇄ Transfer between accounts'}
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -205,6 +248,58 @@ const Transactions = () => {
         </div>
       )}
 
+      {showTransferForm && (
+        <div className="card-paper p-4 mb-4">
+          {accounts.length < 2 ? (
+            <p style={{ color: 'var(--ink-text-muted)' }}>
+              You need at least two bank accounts to transfer money between them.
+            </p>
+          ) : (
+            <form onSubmit={handleTransferSubmit}>
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>From account</label>
+                  <Select
+                    name="fromAccountId"
+                    value={transferForm.fromAccountId}
+                    onChange={handleTransferChange}
+                    placeholder="Select source account"
+                    options={accounts.map((acc) => ({ value: acc._id, label: `${acc.bankName} — ${acc.accountName}` }))}
+                  />
+                </div>
+                <div className="col-md-6">
+                  <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>To account</label>
+                  <Select
+                    name="toAccountId"
+                    value={transferForm.toAccountId}
+                    onChange={handleTransferChange}
+                    placeholder="Select destination account"
+                    options={accounts
+                      .filter((acc) => acc._id !== transferForm.fromAccountId)
+                      .map((acc) => ({ value: acc._id, label: `${acc.bankName} — ${acc.accountName}` }))}
+                  />
+                </div>
+                <div className="col-md-4">
+                  <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Amount</label>
+                  <input name="amount" type="number" className="input-ledger" value={transferForm.amount} onChange={handleTransferChange} required min="0" />
+                </div>
+                <div className="col-md-4">
+                  <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Date</label>
+                  <input name="date" type="date" className="input-ledger" value={transferForm.date} onChange={handleTransferChange} required />
+                </div>
+                <div className="col-md-4">
+                  <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Description</label>
+                  <input name="description" className="input-ledger" value={transferForm.description} onChange={handleTransferChange} placeholder="Optional" />
+                </div>
+              </div>
+              <button type="submit" className="btn-ledger mt-4" disabled={submittingTransfer}>
+                {submittingTransfer ? 'Transferring…' : 'Complete transfer'}
+              </button>
+            </form>
+          )}
+        </div>
+      )}
+
       {accounts.length > 0 && (
         <div className="mb-3" style={{ maxWidth: '280px' }}>
           <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Filter by account</label>
@@ -244,7 +339,7 @@ const Transactions = () => {
                   {CREDIT_TYPES.includes(tx.type) ? '+' : '−'}{formatCurrency(tx.amount)}
                 </span>
                 <button
-                  onClick={() => setConfirmState({ open: true, txId: tx._id })}
+                  onClick={() => setConfirmState({ open: true, txId: tx._id, isTransfer: tx.type === 'transfer_in' || tx.type === 'transfer_out' })}
                   style={{ background: 'none', border: 'none', color: 'var(--rust)', fontSize: '0.8rem', cursor: 'pointer' }}
                 >
                   Delete
@@ -257,11 +352,15 @@ const Transactions = () => {
 
       <ConfirmDialog
         open={confirmState.open}
-        title="Delete this transaction?"
-        message="This will remove the entry and update the linked account's balance immediately."
+        title={confirmState.isTransfer ? 'Delete this transfer?' : 'Delete this transaction?'}
+        message={
+          confirmState.isTransfer
+            ? 'This is one half of a transfer between your accounts. Deleting it removes BOTH linked entries so your balances stay correct.'
+            : "This will remove the entry and update the linked account's balance immediately."
+        }
         confirmLabel="Delete"
         onConfirm={handleConfirmDelete}
-        onCancel={() => setConfirmState({ open: false, txId: null })}
+        onCancel={() => setConfirmState({ open: false, txId: null, isTransfer: false })}
       />
     </PageLayout>
   );

@@ -74,14 +74,28 @@ const getAllUpcomingDues = async (userId) => {
     });
   });
 
+  // Keep items due THIS month or already overdue (from a past month) -
+  // only exclude things whose next due date falls in a FUTURE month.
+  // Without this, a SIP whose date already passed this month would show
+  // its next occurrence next month, cluttering "this month's" view.
+  const now = new Date();
+  const isFutureMonth = (date) => {
+    const d = new Date(date);
+    const dueMonthIndex = d.getFullYear() * 12 + d.getMonth();
+    const currentMonthIndex = now.getFullYear() * 12 + now.getMonth();
+    return dueMonthIndex > currentMonthIndex;
+  };
+
+  const filteredDues = dues.filter((d) => !d.dueDate || !isFutureMonth(d.dueDate));
+
   // Sort by due date ascending; items with no due date go last
-  dues.sort((a, b) => {
+  filteredDues.sort((a, b) => {
     if (!a.dueDate) return 1;
     if (!b.dueDate) return -1;
     return new Date(a.dueDate) - new Date(b.dueDate);
   });
 
-  return dues;
+  return filteredDues;
 };
 
 module.exports = { getAllUpcomingDues };

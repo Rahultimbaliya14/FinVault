@@ -1,12 +1,8 @@
 const mongoose = require('mongoose');
 const Transaction = require('../models/Transaction');
 
-// Types that ADD to the account balance. Everything else SUBTRACTS.
-const CREDIT_TYPES = ['income', 'refund'];
+const CREDIT_TYPES = ['income', 'refund', 'transfer_in'];
 
-// Computes current balance = initialBalance + income/refunds - everything else.
-// This is the SINGLE place balance math happens. If the rules ever change
-// (e.g. a new transaction type is added), this is the only function to touch.
 const getCurrentBalance = async (account) => {
   const result = await Transaction.aggregate([
     { $match: { accountId: new mongoose.Types.ObjectId(account._id) } },

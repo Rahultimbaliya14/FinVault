@@ -14,6 +14,14 @@ exports.createTransactionValidator = [
   body('description').optional().trim().isLength({ max: 200 }).withMessage('Description too long'),
 ];
 
+exports.transferValidator = [
+  body('fromAccountId').isMongoId().withMessage('A valid source account is required'),
+  body('toAccountId').isMongoId().withMessage('A valid destination account is required'),
+  body('amount').isFloat({ gt: 0 }).withMessage('Amount must be greater than 0'),
+  body('date').optional().isISO8601().withMessage('Date must be a valid date'),
+  body('description').optional().trim().isLength({ max: 200 }).withMessage('Description too long'),
+];
+
 exports.updateTransactionValidator = [
   body('amount').optional().isFloat({ gt: 0 }).withMessage('Amount must be greater than 0'),
   body('type').optional().isIn(TYPES).withMessage('Invalid transaction type'),

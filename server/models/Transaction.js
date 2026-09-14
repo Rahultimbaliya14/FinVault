@@ -17,9 +17,6 @@ const transactionSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
-    // 'income' and 'refund' ADD to balance. Everything else SUBTRACTS.
-    // Keeping this list here (not scattered across the codebase) makes
-    // it a single source of truth when we add more types later.
     type: {
       type: String,
       enum: [
@@ -28,6 +25,8 @@ const transactionSchema = new mongoose.Schema(
         'upi_expense',
         'bank_transfer',
         'refund',
+        'transfer_out',
+        'transfer_in',
       ],
       required: true,
     },
@@ -60,6 +59,10 @@ const transactionSchema = new mongoose.Schema(
     description: {
       type: String,
       trim: true,
+    },
+  
+    transferGroupId: {
+      type: mongoose.Schema.Types.ObjectId,
     },
   },
   { timestamps: true }

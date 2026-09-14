@@ -19,6 +19,8 @@ const getTotalBankBalance = async (userId) => {
   return balances.reduce((sum, b) => sum + b, 0);
 };
 
+const TRANSFER_TYPES = ['transfer_in', 'transfer_out'];
+
 // This month's income and expense totals, plus category breakdown -
 // all computed with a single aggregation query rather than looping in JS
 const getMonthlyTransactionSummary = async (userId) => {
@@ -44,6 +46,11 @@ const getMonthlyTransactionSummary = async (userId) => {
   // keeps the logic correct even if that assumption changes later)
   const allTx = await Transaction.find({ userId, date: { $gte: start, $lte: end } });
   allTx.forEach((tx) => {
+    // A transfer between your own accounts isn't real income or a real
+    // expense - it just moves money you already had. Leave it out of
+    // both totals entirely so it doesn't distort the monthly picture.
+    if (TRANSFER_TYPES.includes(tx.type)) return;
+
     if (CREDIT_TYPES.includes(tx.type)) {
       totalIncome += tx.amount;
     } else {

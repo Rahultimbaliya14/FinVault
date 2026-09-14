@@ -77,7 +77,7 @@ app.use('/api/v1/admin', adminRoutes);
 
 // Health check
 app.get('/', (req, res) => {
-  res.json({ message: 'FinVault API is running' });
+    res.json({ message: 'FinVault API is running' });
 });
 
 // Basic error handler (fallback)
