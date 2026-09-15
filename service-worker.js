@@ -3,7 +3,7 @@
 // It does NOT cache API responses - your financial data always comes
 // fresh from the network, this only makes the app ITSELF load instantly.
 
-const CACHE_NAME = 'finvault-shell-v1';
+const CACHE_NAME = 'finvault-shell-v2';
 
 // BASE_URL is injected by Vite at build time (matches vite.config.js's
 // `base` setting) so this works correctly whether deployed at the
@@ -14,7 +14,7 @@ const APP_SHELL = [
   './manifest.webmanifest',
   './favicon.svg',
   './icon-192.png',
-  './icon-512.png',
+  './icon-512-maskable.png',
 ];
 
 self.addEventListener('install', (event) => {
