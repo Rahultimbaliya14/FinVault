@@ -9,3 +9,7 @@ exports.loginValidator = [
   body('email').isEmail().withMessage('A valid email is required').normalizeEmail(),
   body('password').notEmpty().withMessage('Password is required'),
 ];
+
+exports.refreshValidator = [
+  body('refreshToken').notEmpty().withMessage('refreshToken is required'),
+];

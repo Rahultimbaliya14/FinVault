@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import PageLayout from '../components/PageLayout';
+import MonthSelector from '../components/MonthSelector';
 import { fetchDues } from '../api/dues';
 
 const formatCurrency = (amount) => `₹${Math.round(amount || 0).toLocaleString('en-IN')}`;
@@ -20,16 +21,22 @@ const getUrgency = (daysUntilDue) => {
   return 'neutral';
 };
 
+const now = new Date();
+const DEFAULT_MONTH_VALUE = `${now.getFullYear()}-${now.getMonth() + 1}`;
+
 const Dues = () => {
   const [dues, setDues] = useState([]);
   const [totalDue, setTotalDue] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState(DEFAULT_MONTH_VALUE);
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       try {
-        const res = await fetchDues();
+        const [year, month] = selectedMonth.split('-').map(Number);
+        const res = await fetchDues(month, year);
         setDues(res.data.dues);
         setTotalDue(res.data.totalDue);
       } catch (err) {
@@ -39,7 +46,7 @@ const Dues = () => {
       }
     };
     load();
-  }, []);
+  }, [selectedMonth]);
 
   const overdue = dues.filter((d) => getUrgency(d.daysUntilDue) === 'overdue');
   const dueSoon = dues.filter((d) => getUrgency(d.daysUntilDue) === 'soon');
@@ -74,11 +81,14 @@ const Dues = () => {
 
   return (
     <PageLayout>
-      <div className="mb-4">
-        <span className="eyebrow-tab">Dues</span>
-        <h1 className="font-display mt-3" style={{ fontSize: '2rem', color: 'var(--ink-navy)' }}>
-          Everything coming due
-        </h1>
+      <div className="mb-4 d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+          <span className="eyebrow-tab">Dues</span>
+          <h1 className="font-display mt-3" style={{ fontSize: '2rem', color: 'var(--ink-navy)' }}>
+            Everything coming due
+          </h1>
+        </div>
+        <MonthSelector value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} />
       </div>
 
       {loading ? (

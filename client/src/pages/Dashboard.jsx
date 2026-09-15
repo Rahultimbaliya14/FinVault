@@ -1,16 +1,24 @@
 import { useState, useEffect } from 'react';
 import { fetchDashboard } from '../api/dashboard';
+import { fetchDues } from '../api/dues';
 import PageLayout from '../components/PageLayout';
 import ViewToggle from '../components/ViewToggle';
+import MonthSelector from '../components/MonthSelector';
 import { PositionChart, DuesChart, CategoryChart, OverviewChart, TransactionsChart } from '../components/DashboardCharts';
 
 const formatCurrency = (amount) => `₹${Math.round(amount || 0).toLocaleString('en-IN')}`;
+
+const now = new Date();
+const DEFAULT_MONTH_VALUE = `${now.getFullYear()}-${now.getMonth() + 1}`;
 
 const Dashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState('ledger'); // 'ledger' | 'chart'
+  const [duesMonth, setDuesMonth] = useState(DEFAULT_MONTH_VALUE);
+  const [duesOverride, setDuesOverride] = useState(null); // null = use the dashboard's own current-month dues
+  const [duesLoading, setDuesLoading] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -25,6 +33,29 @@ const Dashboard = () => {
     };
     load();
   }, []);
+
+  // Only fetch separately when the user picks a month OTHER than the
+  // current one - the main dashboard call already gives us this month's
+  // dues for free, no need to refetch that.
+  useEffect(() => {
+    if (duesMonth === DEFAULT_MONTH_VALUE) {
+      setDuesOverride(null);
+      return;
+    }
+    const loadDuesForMonth = async () => {
+      setDuesLoading(true);
+      try {
+        const [year, month] = duesMonth.split('-').map(Number);
+        const res = await fetchDues(month, year);
+        setDuesOverride(res.data.dues);
+      } catch (err) {
+        setDuesOverride([]);
+      } finally {
+        setDuesLoading(false);
+      }
+    };
+    loadDuesForMonth();
+  }, [duesMonth]);
 
   if (loading) {
     return (
@@ -132,14 +163,24 @@ const Dashboard = () => {
           {/* Upcoming dues */}
           <div className="col-lg-6">
             <div className="card-paper p-4">
-              <h2 className="font-display" style={{ fontSize: '1.15rem', marginBottom: '1rem' }}>
-                Upcoming dues
-              </h2>
-              {upcomingDues && upcomingDues.length > 0 ? (
-                viewMode === 'chart' ? (
-                  <DuesChart dues={upcomingDues} />
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <h2 className="font-display" style={{ fontSize: '1.15rem', margin: 0 }}>
+                  Upcoming dues
+                </h2>
+                <MonthSelector value={duesMonth} onChange={(e) => setDuesMonth(e.target.value)} />
+              </div>
+              {(() => {
+                const displayedDues = duesOverride !== null ? duesOverride : upcomingDues;
+                if (duesLoading) {
+                  return <p style={{ color: 'var(--ink-text-muted)', fontSize: '0.9rem' }}>Loading…</p>;
+                }
+                if (!displayedDues || displayedDues.length === 0) {
+                  return <p style={{ color: 'var(--ink-text-muted)', fontSize: '0.9rem' }}>Nothing due. Clean slate.</p>;
+                }
+                return viewMode === 'chart' ? (
+                  <DuesChart dues={displayedDues} />
                 ) : (
-                  upcomingDues.slice(0, 7).map((due, i) => (
+                  displayedDues.slice(0, 7).map((due, i) => (
                     <div className="ledger-row write-in" key={due.refId} style={{ animationDelay: `${i * 0.06}s` }}>
                       <div>
                         <div className="ledger-row-label">{due.label}</div>
@@ -150,10 +191,8 @@ const Dashboard = () => {
                       <span className="ledger-row-value value-negative">{formatCurrency(due.amount)}</span>
                     </div>
                   ))
-                )
-              ) : (
-                <p style={{ color: 'var(--ink-text-muted)', fontSize: '0.9rem' }}>Nothing due. Clean slate.</p>
-              )}
+                );
+              })()}
             </div>
           </div>
 

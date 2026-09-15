@@ -3,6 +3,24 @@
 
 <head>
   <meta charset="UTF-8" />
+  <!-- Web app manifest - this is what makes "Install app" / "Add to Home Screen" available -->
+  <link rel="manifest" href="/manifest.webmanifest">
+
+  <!-- Browser chrome / task-switcher color to match the app's ink navy theme -->
+  <meta name="theme-color" content="#101B2D">
+
+  <!-- iOS-specific PWA support (Safari ignores the manifest for some of this) -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FinVault">
+
+  <!-- Android/Chrome PWA support -->
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- Basic description, used by some install prompts and share previews -->
+  <meta name="description"
+    content="A personal ledger for bank accounts, credit cards, SIPs, EMIs, and money owed between you and others.">
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,8 +34,10 @@
   <link rel="shortcut icon" href="/favicon.ico">
   <title>FinVault</title>
 </head>
+
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
+
 </html>
