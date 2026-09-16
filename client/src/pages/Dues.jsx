@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import PageLayout from '../components/PageLayout';
 import MonthSelector from '../components/MonthSelector';
-import { fetchDues } from '../api/dues';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { useToast } from '../context/ToastContext';
+import { fetchDues, markDuePaid, markDueSkipped } from '../api/dues';
 
 const formatCurrency = (amount) => `₹${Math.round(amount || 0).toLocaleString('en-IN')}`;
 
@@ -25,28 +27,55 @@ const now = new Date();
 const DEFAULT_MONTH_VALUE = `${now.getFullYear()}-${now.getMonth() + 1}`;
 
 const Dues = () => {
+  const { showToast } = useToast();
   const [dues, setDues] = useState([]);
   const [totalDue, setTotalDue] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(DEFAULT_MONTH_VALUE);
+  const [confirmState, setConfirmState] = useState({ open: false, due: null, action: null });
+  const [processingId, setProcessingId] = useState(null);
+
+  const loadDues = async () => {
+    setLoading(true);
+    try {
+      const [year, month] = selectedMonth.split('-').map(Number);
+      const res = await fetchDues(month, year);
+      setDues(res.data.dues);
+      setTotalDue(res.data.totalDue);
+    } catch (err) {
+      setError('Could not load your dues.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const [year, month] = selectedMonth.split('-').map(Number);
-        const res = await fetchDues(month, year);
-        setDues(res.data.dues);
-        setTotalDue(res.data.totalDue);
-      } catch (err) {
-        setError('Could not load your dues.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    loadDues();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth]);
+
+  const handleConfirmAction = async () => {
+    const { due, action } = confirmState;
+    const [year, month] = selectedMonth.split('-').map(Number);
+    setProcessingId(due.refId);
+    setConfirmState({ open: false, due: null, action: null });
+
+    try {
+      if (action === 'pay') {
+        await markDuePaid(due.type, due.refId, month, year);
+        showToast(`${due.label} marked as paid — deducted from its account`, 'success');
+      } else {
+        await markDueSkipped(due.type, due.refId, month, year);
+        showToast(`${due.label} skipped for this month`, 'success');
+      }
+      loadDues();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Could not update this item.', 'error');
+    } finally {
+      setProcessingId(null);
+    }
+  };
 
   const overdue = dues.filter((d) => getUrgency(d.daysUntilDue) === 'overdue');
   const dueSoon = dues.filter((d) => getUrgency(d.daysUntilDue) === 'soon');
@@ -58,22 +87,46 @@ const Dues = () => {
       <div className="mb-4">
         <h2 className="font-display" style={{ fontSize: '1.05rem', marginBottom: '0.75rem' }}>{title}</h2>
         <div className="card-paper p-4">
-          {items.map((due) => (
-            <div className="ledger-row" key={due.refId}>
-              <div>
-                <div className="ledger-row-label" style={{ color: 'var(--ink-text)', fontWeight: 500 }}>
-                  {due.label}
+          {items.map((due) => {
+            const isActionable = due.type === 'sip' || due.type === 'emi';
+            const isProcessing = processingId === due.refId;
+            return (
+              <div className="ledger-row" key={due.refId}>
+                <div>
+                  <div className="ledger-row-label" style={{ color: 'var(--ink-text)', fontWeight: 500 }}>
+                    {due.label}
+                  </div>
+                  <div className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--ink-text-muted)' }}>
+                    {TYPE_LABEL[due.type] || due.type}
+                    {due.dueDate && ` · ${new Date(due.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
+                    {due.daysUntilDue !== null && due.daysUntilDue >= 0 && ` · in ${due.daysUntilDue} day${due.daysUntilDue === 1 ? '' : 's'}`}
+                    {due.daysUntilDue !== null && due.daysUntilDue < 0 && ` · ${Math.abs(due.daysUntilDue)} day${Math.abs(due.daysUntilDue) === 1 ? '' : 's'} overdue`}
+                  </div>
                 </div>
-                <div className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--ink-text-muted)' }}>
-                  {TYPE_LABEL[due.type] || due.type}
-                  {due.dueDate && ` · ${new Date(due.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
-                  {due.daysUntilDue !== null && due.daysUntilDue >= 0 && ` · in ${due.daysUntilDue} day${due.daysUntilDue === 1 ? '' : 's'}`}
-                  {due.daysUntilDue !== null && due.daysUntilDue < 0 && ` · ${Math.abs(due.daysUntilDue)} day${Math.abs(due.daysUntilDue) === 1 ? '' : 's'} overdue`}
+                <div className="d-flex align-items-center gap-3">
+                  <span className={`ledger-row-value ${toneClass}`}>{formatCurrency(due.amount)}</span>
+                  {isActionable && (
+                    <div className="d-flex gap-2">
+                      <button
+                        onClick={() => setConfirmState({ open: true, due, action: 'pay' })}
+                        disabled={isProcessing}
+                        style={{ background: 'none', border: 'none', color: 'var(--emerald)', fontSize: '0.78rem', cursor: 'pointer' }}
+                      >
+                        Paid
+                      </button>
+                      <button
+                        onClick={() => setConfirmState({ open: true, due, action: 'skip' })}
+                        disabled={isProcessing}
+                        style={{ background: 'none', border: 'none', color: 'var(--ink-text-muted)', fontSize: '0.78rem', cursor: 'pointer' }}
+                      >
+                        Skip
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
-              <span className={`ledger-row-value ${toneClass}`}>{formatCurrency(due.amount)}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );
@@ -115,6 +168,19 @@ const Dues = () => {
           {renderGroup('Upcoming', upcoming, 'value-neutral')}
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.action === 'pay' ? 'Mark this as paid?' : 'Skip this month?'}
+        message={
+          confirmState.action === 'pay'
+            ? `This creates an expense transaction for ${formatCurrency(confirmState.due?.amount)} and deducts it from the linked account right away.`
+            : "This dismisses this month's occurrence without recording any transaction. You can't undo this once confirmed."
+        }
+        confirmLabel={confirmState.action === 'pay' ? 'Mark paid' : 'Skip'}
+        onConfirm={handleConfirmAction}
+        onCancel={() => setConfirmState({ open: false, due: null, action: null })}
+      />
     </PageLayout>
   );
 };

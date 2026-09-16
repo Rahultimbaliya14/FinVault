@@ -2,6 +2,7 @@ const SIP = require('../models/SIP');
 const EMI = require('../models/EMI');
 const BillingCycle = require('../models/BillingCycle');
 const LendBorrow = require('../models/LendBorrow');
+const CommitmentAction = require('../models/CommitmentAction');
 const { daysUntil, getDateInMonth } = require('./dueDateService');
 
 const isSameMonth = (date, year, monthIndex) => {
@@ -21,11 +22,22 @@ const getAllUpcomingDues = async (userId, targetYear, targetMonth) => {
   const monthIndex = targetMonth ?? now.getMonth();
   const isCurrentMonth = year === now.getFullYear() && monthIndex === now.getMonth();
 
+  // SIP/EMI decisions already made for this exact period - anything
+  // marked paid or skipped here should NOT show up as still due.
+  const handledActions = await CommitmentAction.find({
+    userId,
+    month: monthIndex + 1,
+    year,
+  });
+  const isHandled = (refType, refId) =>
+    handledActions.some((a) => a.refType === refType && String(a.refId) === String(refId));
+
   const dues = [];
 
   // --- SIPs: generate this SIP's date directly within the target month ---
   const sips = await SIP.find({ userId, status: 'active' });
   sips.forEach((sip) => {
+    if (isHandled('sip', sip._id)) return;
     const dueDate = getDateInMonth(sip.sipDate, year, monthIndex);
     dues.push({
       type: 'sip',
@@ -40,6 +52,7 @@ const getAllUpcomingDues = async (userId, targetYear, targetMonth) => {
   // --- EMIs: same approach ---
   const emis = await EMI.find({ userId, status: 'active' });
   emis.forEach((emi) => {
+    if (isHandled('emi', emi._id)) return;
     const dueDate = getDateInMonth(emi.dueDate, year, monthIndex);
     dues.push({
       type: 'emi',

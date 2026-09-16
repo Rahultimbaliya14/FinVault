@@ -11,6 +11,7 @@ import CreditCards from './pages/CreditCards';
 import Commitments from './pages/Commitments';
 import Lending from './pages/Lending';
 import Dues from './pages/Dues';
+import Reports from './pages/Reports';
 
 function App() {
   return (
@@ -73,6 +74,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Dues />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <Reports />
               </ProtectedRoute>
             }
           />

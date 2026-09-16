@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { label: 'SIPs & EMIs', path: '/commitments' },
   { label: 'Lending', path: '/lending' },
   { label: 'Dues', path: '/dues' },
+  { label: 'Reports', path: '/reports' },
 ];
 
 // Same nav content, two behaviors:

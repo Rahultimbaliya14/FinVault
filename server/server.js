@@ -12,6 +12,7 @@ const lendBorrowRoutes = require('./routes/lendBorrow');
 const duesRoutes = require('./routes/dues');
 const dashboardRoutes = require('./routes/dashboard');
 const adminRoutes = require('./routes/admin');
+const reportRoutes = require('./routes/report');
 
 const app = express();
 
@@ -74,6 +75,7 @@ app.use('/api/v1/lend-borrow', lendBorrowRoutes);
 app.use('/api/v1/dues', duesRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/reports', reportRoutes);
 
 // Health check
 app.get('/', (req, res) => {

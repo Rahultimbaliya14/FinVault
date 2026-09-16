@@ -182,6 +182,27 @@ body {
   border-radius: 2px;
 }
 
+/* ---- Print isolation: only #report-printable shows when printing ---- */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #report-printable,
+  #report-printable * {
+    visibility: visible;
+  }
+  #report-printable {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 0;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
+
 /* ---- Toast entrance ---- */
 @keyframes toastIn {
   from { opacity: 0; transform: translateY(8px); }
