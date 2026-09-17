@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -12,12 +12,15 @@ import Commitments from './pages/Commitments';
 import Lending from './pages/Lending';
 import Dues from './pages/Dues';
 import Reports from './pages/Reports';
+import AdminLogin from './pages/admin/AdminLogin';
+import AdminDashboard from './pages/admin/Admindashboard';
+import AdminProtectedRoute from './components/AdminProtectedRoute';
 
 function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <HashRouter>
+        <BrowserRouter basename={import.meta.env.BASE_URL}>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -85,11 +88,25 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* Admin Portal - completely separate from the customer app.
+              No sidebar link anywhere; reachable only by typing the URL
+              directly, and guarded by its own token/route guard. */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route
+            path="/admin/dashboard"
+            element={
+              <AdminProtectedRoute>
+                <AdminDashboard />
+              </AdminProtectedRoute>
+            }
+          />
+
           {/* Any unknown route redirects to the dashboard (which itself
               redirects to /login if the user isn't authenticated) */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
-        </HashRouter>
+        </BrowserRouter>
       </ToastProvider>
     </AuthProvider>
   );

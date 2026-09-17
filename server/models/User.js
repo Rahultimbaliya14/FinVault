@@ -18,16 +18,13 @@ const userSchema = new mongoose.Schema(
       enum: ['admin', 'user'],
       default: 'user',
     },
-    // For now, each user is their own tenant root.
-    // If you later support one admin managing multiple users
-    // under one tenant, set this to the admin's _id at creation time.
     tenantId: {
       type: mongoose.Schema.Types.ObjectId,
       required: false,
     },
     isActive: {
       type: Boolean,
-      default: true,
+      default: false,
     },
   },
   { timestamps: true }

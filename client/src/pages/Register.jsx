@@ -9,6 +9,7 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [registered, setRegistered] = useState(false);
 
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -29,7 +30,9 @@ const Register = () => {
     setSubmitting(true);
     try {
       await register(email, password);
-      navigate('/dashboard');
+      // Registration no longer auto-logs in - the account is pending
+      // admin approval, so show a confirmation instead of the dashboard.
+      setRegistered(true);
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
     } finally {
@@ -37,9 +40,29 @@ const Register = () => {
     }
   };
 
+  if (registered) {
+    return (
+      <AuthLayout
+        eyebrow="Cash Ledger"
+        title="Almost there."
+        tagline="Your account is being reviewed before you can start using Cash Ledger."
+      >
+        <h2 className="font-display" style={{ fontSize: '1.5rem', marginBottom: '0.8rem' }}>
+          Registration received
+        </h2>
+        <p style={{ color: 'var(--ink-text-muted)', fontSize: '0.92rem', lineHeight: 1.5, marginBottom: '1.5rem' }}>
+          Your account has been created and is pending admin approval. You'll be able to log in once it's approved.
+        </p>
+        <button className="btn-ledger w-100" onClick={() => navigate('/login')}>
+          Back to login
+        </button>
+      </AuthLayout>
+    );
+  }
+
   return (
     <AuthLayout
-      eyebrow="FinVault"
+      eyebrow="Cash Ledger"
       title="Open your ledger."
       tagline="Bank balances, credit cards, loans, and what you're owed — recorded once, understood instantly."
     >

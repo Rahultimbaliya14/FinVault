@@ -13,6 +13,7 @@ const duesRoutes = require('./routes/dues');
 const dashboardRoutes = require('./routes/dashboard');
 const adminRoutes = require('./routes/admin');
 const reportRoutes = require('./routes/report');
+const superAdminRoutes = require('./routes/superAdmin');
 
 const app = express();
 
@@ -44,7 +45,7 @@ app.use((req, res, next) => {
 
 const allowedOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
-  : ['https://rahultimbaliya14.github.io'];
+  : ['https://rahultimbaliya14.github.io/'];
 
 const corsOptions = {
   origin: function (origin, callback) {
@@ -76,6 +77,7 @@ app.use('/api/v1/dues', duesRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/reports', reportRoutes);
+app.use('/api/v1/superadmin', superAdminRoutes);
 
 // Health check
 app.get('/', (req, res) => {

@@ -22,6 +22,7 @@ exports.createUser = async (req, res) => {
       email,
       passwordHash,
       role: role === 'admin' ? 'admin' : 'user',
+      isActive: true, // created directly by an admin - already vetted, unlike self-registration
     });
 
     user.tenantId = user._id;

@@ -15,10 +15,6 @@ const generateAccessToken = (user) => {
   );
 };
 
-// Refresh tokens are random opaque strings (not JWTs) stored in the DB.
-// This makes them trivially revocable - deleting the DB row instantly
-// invalidates it, which a signed-but-stateless JWT can't do before its
-// own expiry. The DB lookup on refresh is a small, worthwhile cost.
 const generateRefreshToken = async (user) => {
   const token = crypto.randomBytes(48).toString('hex');
   const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRES_IN_DAYS * 24 * 60 * 60 * 1000);
@@ -26,6 +22,9 @@ const generateRefreshToken = async (user) => {
   await RefreshToken.create({ userId: user._id, token, expiresAt });
   return token;
 };
+
+const ADMIN_CONTACT_MESSAGE =
+  'Your account is not active yet. Please contact Rahul Timbaliya (rahultimbaliya555@gmail.com) for approval.';
 
 // POST /api/v1/auth/register
 exports.register = async (req, res) => {
@@ -48,20 +47,16 @@ exports.register = async (req, res) => {
       email,
       passwordHash,
       role: 'user',
+   
     });
 
     // A user acts as the root of their own tenant by default
     user.tenantId = user._id;
     await user.save();
 
-    const accessToken = generateAccessToken(user);
-    const refreshToken = await generateRefreshToken(user);
-
     res.status(201).json({
-      message: 'User registered successfully',
-      accessToken,
-      refreshToken,
-      user: { id: user._id, email: user.email, role: user.role },
+      message: 'Registration successful. Your account is pending admin approval before you can log in.',
+      pendingApproval: true,
     });
   } catch (error) {
     res.status(500).json({ message: 'Registration failed', error: error.message });
@@ -83,7 +78,7 @@ exports.login = async (req, res) => {
     }
 
     if (!user.isActive) {
-      return res.status(403).json({ message: 'Account is deactivated' });
+      return res.status(403).json({ message: ADMIN_CONTACT_MESSAGE });
     }
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
@@ -105,11 +100,6 @@ exports.login = async (req, res) => {
   }
 };
 
-// POST /api/v1/auth/refresh
-// Exchanges a valid, unexpired refresh token for a brand new access
-// token. Also ROTATES the refresh token (issues a new one, deletes the
-// old one) - if a refresh token is ever stolen, using the old one after
-// rotation fails immediately, since it no longer exists in the DB.
 exports.refresh = async (req, res) => {
   try {
     const { refreshToken } = req.body;
@@ -148,10 +138,6 @@ exports.refresh = async (req, res) => {
   }
 };
 
-// POST /api/v1/auth/logout
-// Revokes the refresh token server-side. The access token itself can't
-// be revoked (it's stateless and just expires naturally within 15
-// minutes), but without a valid refresh token, no new one can be issued.
 exports.logout = async (req, res) => {
   try {
     const { refreshToken } = req.body;
