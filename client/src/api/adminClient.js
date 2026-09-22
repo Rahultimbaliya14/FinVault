@@ -25,7 +25,8 @@ adminApi.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       clearAdminToken();
-      window.location.href = `${import.meta.env.BASE_URL}admin/login`;
+      const basePath = import.meta.env.BASE_URL || '/';
+      window.location.href = `${basePath}admin/login`;
     }
     return Promise.reject(error);
   }

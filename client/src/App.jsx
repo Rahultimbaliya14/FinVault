@@ -15,6 +15,11 @@ import Reports from './pages/Reports';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/Admindashboard';
 import AdminProtectedRoute from './components/AdminProtectedRoute';
+import { getAdminToken } from './api/adminClient';
+
+const AdminRootRoute = () => {
+  return getAdminToken() ? <Navigate to="/admin/dashboard" replace /> : <Navigate to="/admin/login" replace />;
+};
 
 function App() {
   return (
@@ -92,7 +97,13 @@ function App() {
           {/* Admin Portal - completely separate from the customer app.
               No sidebar link anywhere; reachable only by typing the URL
               directly, and guarded by its own token/route guard. */}
-          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<AdminRootRoute />} />
+          <Route
+            path="/admin/login"
+            element={
+              getAdminToken() ? <Navigate to="/admin/dashboard" replace /> : <AdminLogin />
+            }
+          />
           <Route
             path="/admin/dashboard"
             element={

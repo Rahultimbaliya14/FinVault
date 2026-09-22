@@ -13,6 +13,11 @@ const ACCESS_TOKEN_KEY = 'finvault_token';
 const REFRESH_TOKEN_KEY = 'finvault_refresh_token';
 const USER_KEY = 'finvault_user';
 
+const redirectToLogin = () => {
+  const basePath = import.meta.env.BASE_URL || '/';
+  window.location.href = `${basePath}login`;
+};
+
 export const getAccessToken = () => localStorage.getItem(ACCESS_TOKEN_KEY);
 export const getRefreshToken = () => localStorage.getItem(REFRESH_TOKEN_KEY);
 
@@ -71,7 +76,7 @@ api.interceptors.response.use(
       const refreshToken = getRefreshToken();
       if (!refreshToken) {
         clearAuthStorage();
-        window.location.href = '/#/login';
+        redirectToLogin();
         return Promise.reject(error);
       }
 
@@ -102,7 +107,7 @@ api.interceptors.response.use(
         // log the user out.
         processQueue(refreshError, null);
         clearAuthStorage();
-        window.location.href = '/#/login';
+        redirectToLogin();
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
