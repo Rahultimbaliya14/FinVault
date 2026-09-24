@@ -1,5 +1,14 @@
+// Minimal service worker: caches the app shell so the PWA can install
+// and still open if briefly offline. It does NOT cache API responses -
+// your financial data always comes fresh from the network.
+//
+// v2: switched from cache-first to NETWORK-FIRST for navigation/HTML
+// requests. Cache-first was serving a stale, old JS bundle indefinitely
+// after every new deploy - this is what caused old routes/behavior to
+// keep running even after the code was updated. Bumping the cache name
+// also forces every existing browser to drop the old (broken) cache.
 
-const CACHE_NAME = 'finvault-shell-v2';
+const CACHE_NAME = 'cash-ledger-shell-v2';
 
 const APP_SHELL = [
   './',

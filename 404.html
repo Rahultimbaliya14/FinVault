@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<!--
+  GitHub Pages has no server-side routing - if someone loads or refreshes
+  a deep link like /FinVault/admin/login directly, GitHub's static server
+  looks for a literal file at that path, finds nothing, and serves this
+  404 page instead of your app.
+
+  This is the standard "spa-github-pages" trick: instead of showing a
+  real 404, we redirect to the site root while stashing the intended
+  path in sessionStorage. The script in index.html then reads it back
+  and uses React Router to navigate to the real destination - so the
+  user ends up exactly where they meant to go, just via one extra hop.
+-->
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Cash Ledger</title>
+    <script>
+      sessionStorage.setItem('spa-redirect-path', location.pathname + location.search + location.hash);
+      location.replace(
+        location.origin + '/FinVault/'
+      );
+    </script>
+  </head>
+  <body></body>
+</html>
