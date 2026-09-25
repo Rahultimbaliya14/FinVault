@@ -51,23 +51,41 @@ const AdminDashboard = () => {
   const pendingUsers = users.filter((u) => !u.isActive);
   const approvedUsers = users.filter((u) => u.isActive);
 
+  // Rebuilt for mobile: the row stacks vertically on narrow screens
+  // (email+meta on top, status+button below, full-width) instead of
+  // forcing everything into one row that pushed the button off-screen
+  // when the email was long. min-width: 0 + wordBreak lets the email
+  // itself wrap instead of forcing the row wider than the viewport.
   const UserRow = ({ user }) => (
-    <div className="ledger-row" key={user._id}>
-      <div>
-        <div className="ledger-row-label" style={{ color: 'var(--ink-text)', fontWeight: 500 }}>{user.email}</div>
+    <div
+      key={user._id}
+      className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2"
+      style={{ padding: '0.85rem 0', borderBottom: '1px solid var(--rule)' }}
+    >
+      <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+        <div
+          className="ledger-row-label"
+          style={{ color: 'var(--ink-text)', fontWeight: 500, wordBreak: 'break-word' }}
+        >
+          {user.email}
+        </div>
         <div className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--ink-text-muted)' }}>
           {new Date(user.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
           {' · '}{user.role}
         </div>
       </div>
-      <div className="d-flex align-items-center gap-3">
-        <span className="font-mono" style={{ fontSize: '0.78rem', fontWeight: 600, color: user.isActive ? 'var(--emerald)' : 'var(--rust)' }}>
+
+      <div className="d-flex align-items-center justify-content-between gap-3" style={{ flexShrink: 0 }}>
+        <span
+          className="font-mono"
+          style={{ fontSize: '0.78rem', fontWeight: 600, color: user.isActive ? 'var(--emerald)' : 'var(--rust)', whiteSpace: 'nowrap' }}
+        >
           {user.isActive ? 'Approved' : 'Pending'}
         </span>
         <button
           onClick={() => setConfirmState({ open: true, user, targetStatus: !user.isActive })}
-          className="btn-ledger"
-          style={{ padding: '0.4rem 0.9rem', fontSize: '0.8rem', background: user.isActive ? 'var(--rust)' : 'var(--emerald)', border: 'none' }}
+          className="btn-ledger flex-shrink-0"
+          style={{ padding: '0.4rem 0.9rem', fontSize: '0.8rem', background: user.isActive ? 'var(--rust)' : 'var(--emerald)', border: 'none', whiteSpace: 'nowrap' }}
         >
           {user.isActive ? 'Deactivate' : 'Approve'}
         </button>
@@ -76,7 +94,7 @@ const AdminDashboard = () => {
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--paper)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--paper)', overflowX: 'hidden' }}>
       <div
         className="d-flex justify-content-between align-items-center px-4 py-3"
         style={{ background: 'var(--ink-navy)', color: 'var(--paper)' }}

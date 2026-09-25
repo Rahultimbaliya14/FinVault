@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { label: 'Lending', path: '/lending' },
   { label: 'Dues', path: '/dues' },
   { label: 'Reports', path: '/reports' },
+  { label: 'Admin Portal', path: '/admin' },
 ];
 
 // Same nav content, two behaviors:
