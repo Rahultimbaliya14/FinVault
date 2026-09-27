@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { useToast } from '../../context/ToastContext';
 import { fetchDashboardSummary, fetchAllUsers, updateUserApproval } from '../../api/superAdmin';
@@ -96,13 +96,32 @@ const AdminDashboard = () => {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--paper)', overflowX: 'hidden' }}>
       <div
-        className="d-flex justify-content-between align-items-center px-4 py-3"
+        className="d-flex flex-wrap justify-content-between align-items-center px-4 py-3 gap-2"
         style={{ background: 'var(--ink-navy)', color: 'var(--paper)' }}
       >
         <span className="font-display" style={{ fontSize: '1.3rem' }}>Admin Portal</span>
-        <button onClick={handleLogout} style={{ background: 'none', border: '1px solid rgba(239,234,224,0.3)', borderRadius: '3px', color: 'var(--paper)', padding: '0.4rem 0.8rem' }}>
-          Log out
-        </button>
+        <div className="d-flex align-items-center gap-2">
+          <Link
+            to="/dashboard"
+            style={{
+              background: 'none',
+              border: '1px solid rgba(239,234,224,0.3)',
+              borderRadius: '3px',
+              color: 'var(--paper)',
+              padding: '0.4rem 0.8rem',
+              fontSize: '0.85rem',
+              textDecoration: 'none',
+            }}
+          >
+            Back to User
+          </Link>
+          <button
+            onClick={handleLogout}
+            style={{ background: 'none', border: '1px solid rgba(239,234,224,0.3)', borderRadius: '3px', color: 'var(--paper)', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+          >
+            Log out
+          </button>
+        </div>
       </div>
 
       <div className="p-4 p-md-5" style={{ maxWidth: '900px', margin: '0 auto' }}>

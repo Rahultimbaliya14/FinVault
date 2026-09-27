@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { label: 'Dues', path: '/dues' },
   { label: 'Reports', path: '/reports' },
   { label: 'Admin Portal', path: '/admin' },
+  { label: 'About', path: '/about' },
 ];
 
 // Same nav content, two behaviors:

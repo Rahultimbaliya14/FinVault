@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { loginAdmin } from '../../api/superAdmin';
 import { setAdminToken } from '../../api/adminClient';
 
@@ -28,8 +28,22 @@ const AdminLogin = () => {
   return (
     <div
       className="d-flex align-items-center justify-content-center"
-      style={{ minHeight: '100vh', background: 'var(--ink-navy)' }}
+      style={{ minHeight: '100vh', background: 'var(--ink-navy)', position: 'relative' }}
     >
+      <Link
+        to="/dashboard"
+        style={{
+          position: 'absolute',
+          top: '1.5rem',
+          left: '1.5rem',
+          color: 'rgba(239,234,224,0.7)',
+          fontSize: '0.85rem',
+          textDecoration: 'none',
+        }}
+      >
+        ← Back to FinVault
+      </Link>
+
       <div style={{ width: '100%', maxWidth: '360px', padding: '2rem' }}>
         <div className="text-center mb-4">
           <span className="eyebrow-tab">Restricted</span>
@@ -37,7 +51,7 @@ const AdminLogin = () => {
             Admin Portal
           </h1>
           <p style={{ color: 'rgba(239,234,224,0.6)', fontSize: '0.85rem' }}>
-            Cash Ledger operator access
+            FinVault operator access
           </p>
         </div>
 
