@@ -7,10 +7,12 @@ const NAV_ITEMS = [
   { label: 'Credit Cards', path: '/cards' },
   { label: 'SIPs & EMIs', path: '/commitments' },
   { label: 'Lending', path: '/lending' },
+  { label: 'IPO', path: '/ipo' },
   { label: 'Dues', path: '/dues' },
   { label: 'Reports', path: '/reports' },
   { label: 'Admin Portal', path: '/admin' },
   { label: 'About', path: '/about' },
+
 ];
 
 // Same nav content, two behaviors:

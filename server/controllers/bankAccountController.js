@@ -1,7 +1,5 @@
 const BankAccount = require('../models/BankAccount');
-const { getCurrentBalance } = require('../services/balanceService');
-
-const calculateCurrentBalance = getCurrentBalance;
+const { getAvailableBalance } = require('../services/balanceService');
 
 // POST /api/v1/accounts
 exports.createAccount = async (req, res) => {
@@ -29,16 +27,16 @@ exports.createAccount = async (req, res) => {
 // GET /api/v1/accounts
 exports.getAccounts = async (req, res) => {
   try {
-    // ALWAYS filter by req.user.id - this is what enforces tenant isolation.
-    // A user can never see another user's accounts because we never
-    // trust an id coming from the request body/params for ownership.
     const accounts = await BankAccount.find({ userId: req.user.id });
 
+    // currentBalance = actual money based on real transactions.
+    // blockedAmount = held for pending IPO applications (not yet spent).
+    // availableBalance = what's actually free to spend right now.
     const accountsWithBalance = await Promise.all(
-      accounts.map(async (account) => ({
-        ...account.toObject(),
-        currentBalance: await calculateCurrentBalance(account),
-      }))
+      accounts.map(async (account) => {
+        const balances = await getAvailableBalance(account);
+        return { ...account.toObject(), ...balances };
+      })
     );
 
     res.status(200).json({ accounts: accountsWithBalance });
@@ -50,9 +48,6 @@ exports.getAccounts = async (req, res) => {
 // GET /api/v1/accounts/:id
 exports.getAccountById = async (req, res) => {
   try {
-    // Scope by BOTH _id and userId together. If someone guesses/changes
-    // the id in the URL but it doesn't belong to them, this returns null
-    // instead of leaking another tenant's data.
     const account = await BankAccount.findOne({
       _id: req.params.id,
       userId: req.user.id,
@@ -62,9 +57,9 @@ exports.getAccountById = async (req, res) => {
       return res.status(404).json({ message: 'Account not found' });
     }
 
-    const currentBalance = await calculateCurrentBalance(account);
+    const balances = await getAvailableBalance(account);
 
-    res.status(200).json({ account: { ...account.toObject(), currentBalance } });
+    res.status(200).json({ account: { ...account.toObject(), ...balances } });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch account', error: error.message });
   }

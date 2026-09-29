@@ -13,7 +13,9 @@ const duesRoutes = require('./routes/dues');
 const dashboardRoutes = require('./routes/dashboard');
 const adminRoutes = require('./routes/admin');
 const reportRoutes = require('./routes/report');
+const ipoRoutes = require('./routes/ipo');
 const superAdminRoutes = require('./routes/superAdmin');
+
 
 const app = express();
 
@@ -78,6 +80,7 @@ app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/superadmin', superAdminRoutes);
+ app.use('/api/v1/ipos', ipoRoutes);
 
 // Health check
 app.get('/', (req, res) => {

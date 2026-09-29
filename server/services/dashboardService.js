@@ -3,8 +3,11 @@ const Transaction = require('../models/Transaction');
 const CreditCard = require('../models/CreditCard');
 const BillingCycle = require('../models/BillingCycle');
 const LendBorrow = require('../models/LendBorrow');
-const { getCurrentBalance, CREDIT_TYPES } = require('./balanceService');
+const IPO = require('../models/Ipo');
+const { getCurrentBalance, getBlockedAmount, CREDIT_TYPES } = require('./balanceService');
 const { getAllUpcomingDues } = require('./duesService');
+
+const TRANSFER_TYPES = ['transfer_in', 'transfer_out'];
 
 const getMonthRange = (date = new Date()) => {
   const start = new Date(date.getFullYear(), date.getMonth(), 1);
@@ -12,38 +15,28 @@ const getMonthRange = (date = new Date()) => {
   return { start, end };
 };
 
-// Total balance across ALL of the user's bank accounts, combined
-const getTotalBankBalance = async (userId) => {
+// Total balance across ALL of the user's bank accounts, combined,
+// plus how much of that combined total is currently on hold for
+// pending IPO applications.
+const getTotalBankBalanceAndBlocked = async (userId) => {
   const accounts = await BankAccount.find({ userId, status: 'active' });
   const balances = await Promise.all(accounts.map((acc) => getCurrentBalance(acc)));
-  return balances.reduce((sum, b) => sum + b, 0);
+  const blocked = await Promise.all(accounts.map((acc) => getBlockedAmount(acc._id)));
+  return {
+    totalBankBalance: balances.reduce((sum, b) => sum + b, 0),
+    totalBlockedInIPOs: blocked.reduce((sum, b) => sum + b, 0),
+  };
 };
-
-const TRANSFER_TYPES = ['transfer_in', 'transfer_out'];
 
 // This month's income and expense totals, plus category breakdown -
 // all computed with a single aggregation query rather than looping in JS
 const getMonthlyTransactionSummary = async (userId) => {
   const { start, end } = getMonthRange();
 
-  const results = await Transaction.aggregate([
-    { $match: { userId, date: { $gte: start, $lte: end } } },
-    {
-      $group: {
-        _id: '$category',
-        total: { $sum: '$amount' },
-        type: { $first: '$type' },
-      },
-    },
-  ]);
-
   let totalIncome = 0;
   let totalExpenses = 0;
   const categoryBreakdown = {};
 
-  // Re-run a simpler pass to correctly separate income vs expense
-  // (a category like 'salary' should only ever be income, but this
-  // keeps the logic correct even if that assumption changes later)
   const allTx = await Transaction.find({ userId, date: { $gte: start, $lte: end } });
   allTx.forEach((tx) => {
     // A transfer between your own accounts isn't real income or a real
@@ -83,30 +76,42 @@ const getMoneyToReceiveAndPay = async (userId) => {
   return { moneyToReceive, moneyToPay };
 };
 
+// Pending IPO applications, soonest allotment date first - shown on the
+// dashboard so upcoming allotment decisions aren't forgotten about.
+const getPendingIPOs = async (userId) => {
+  const ipos = await IPO.find({ userId, status: 'blocked' }).sort({ allotmentDate: 1 });
+  return ipos;
+};
+
 // Assembles every piece into the single object the dashboard UI needs
 const getDashboardData = async (userId) => {
   const [
-    totalBankBalance,
+    { totalBankBalance, totalBlockedInIPOs },
     { totalIncome, totalExpenses, categoryBreakdown },
     creditCardOutstanding,
     { moneyToReceive, moneyToPay },
     upcomingDues,
+    pendingIPOs,
     recentTransactions,
   ] = await Promise.all([
-    getTotalBankBalance(userId),
+    getTotalBankBalanceAndBlocked(userId),
     getMonthlyTransactionSummary(userId),
     getCreditCardOutstanding(userId),
     getMoneyToReceiveAndPay(userId),
     getAllUpcomingDues(userId),
+    getPendingIPOs(userId),
     Transaction.find({ userId }).sort({ date: -1 }).limit(10),
   ]);
 
   // "Committed" = everything due that hasn't been paid yet (SIP, EMI, CC bill, borrow repayments)
   const totalPlannedCommitments = upcomingDues.reduce((sum, d) => sum + d.amount, 0);
-  const availableFunds = totalBankBalance - totalPlannedCommitments;
+  // Available funds now also excludes money on hold for IPO applications -
+  // it's real balance, but not actually spendable right now.
+  const availableFunds = totalBankBalance - totalPlannedCommitments - totalBlockedInIPOs;
 
   return {
     totalBankBalance,
+    totalBlockedInIPOs,
     totalMonthlyIncome: totalIncome,
     totalMonthlyExpenses: totalExpenses,
     totalPlannedCommitments,
@@ -116,6 +121,7 @@ const getDashboardData = async (userId) => {
     availableFunds,
     categoryWiseExpenses: categoryBreakdown,
     upcomingDues: upcomingDues.slice(0, 10),
+    pendingIPOs,
     recentTransactions,
   };
 };

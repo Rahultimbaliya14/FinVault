@@ -16,6 +16,7 @@ import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/Admindashboard';
 import AdminProtectedRoute from './components/AdminProtectedRoute';
 import { getAdminToken } from './api/adminClient';
+import IPOPage from './pages/ipo'; './pages/Ipo';
 import About from './pages/About';
 
 const AdminRootRoute = () => {
@@ -78,6 +79,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+             <Route path="/ipo" element={<ProtectedRoute><IPOPage /></ProtectedRoute>} />
             <Route
               path="/dues"
               element={

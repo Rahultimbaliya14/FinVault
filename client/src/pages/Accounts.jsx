@@ -5,14 +5,14 @@ import Select from '../components/Select';
 import { useToast } from '../context/ToastContext';
 import { fetchAccounts, createAccount, deleteAccount } from '../api/accounts';
 
+const formatCurrency = (amount) => `₹${Math.round(amount || 0).toLocaleString('en-IN')}`;
+
 const ACCOUNT_TYPES = [
   { value: 'savings', label: 'Savings' },
   { value: 'current', label: 'Current' },
   { value: 'salary', label: 'Salary' },
   { value: 'other', label: 'Other' },
 ];
-
-const formatCurrency = (amount) => `₹${Math.round(amount || 0).toLocaleString('en-IN')}`;
 
 const EMPTY_FORM = { bankName: '', accountName: '', accountType: 'savings', initialBalance: '' };
 
@@ -50,10 +50,7 @@ const Accounts = () => {
     setSubmitting(true);
     setError('');
     try {
-      await createAccount({
-        ...form,
-        initialBalance: Number(form.initialBalance) || 0,
-      });
+      await createAccount({ ...form, initialBalance: Number(form.initialBalance) || 0 });
       setForm(EMPTY_FORM);
       setShowForm(false);
       loadAccounts();
@@ -67,9 +64,7 @@ const Accounts = () => {
     }
   };
 
-  const handleDeleteClick = (accountId) => {
-    setConfirmState({ open: true, accountId });
-  };
+  const handleDeleteClick = (accountId) => setConfirmState({ open: true, accountId });
 
   const handleConfirmDelete = async () => {
     try {
@@ -121,14 +116,7 @@ const Accounts = () => {
               </div>
               <div className="col-md-6">
                 <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Initial balance</label>
-                <input
-                  name="initialBalance"
-                  type="number"
-                  className="input-ledger"
-                  value={form.initialBalance}
-                  onChange={handleChange}
-                  placeholder="0"
-                />
+                <input name="initialBalance" type="number" className="input-ledger" value={form.initialBalance} onChange={handleChange} placeholder="0" />
               </div>
             </div>
             <button type="submit" className="btn-ledger mt-4" disabled={submitting}>
@@ -154,10 +142,22 @@ const Accounts = () => {
                 </div>
                 <div className="font-mono text-capitalize" style={{ fontSize: '0.72rem', color: 'var(--ink-text-muted)' }}>
                   {acc.accountType} · {acc.status}
+                  {acc.blockedAmount > 0 && (
+                    <span style={{ color: 'var(--gold)', fontWeight: 600 }}>
+                      {' · '}{formatCurrency(acc.blockedAmount)} blocked (IPO)
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="d-flex align-items-center gap-3">
-                <span className="ledger-row-value value-neutral">{formatCurrency(acc.currentBalance)}</span>
+                <div className="text-end">
+                  <div className="ledger-row-value value-neutral">{formatCurrency(acc.currentBalance)}</div>
+                  {acc.blockedAmount > 0 && (
+                    <div className="font-mono" style={{ fontSize: '0.7rem', color: 'var(--ink-text-muted)' }}>
+                      {formatCurrency(acc.availableBalance)} available
+                    </div>
+                  )}
+                </div>
                 <button
                   onClick={() => handleDeleteClick(acc._id)}
                   style={{ background: 'none', border: 'none', color: 'var(--rust)', fontSize: '0.8rem', cursor: 'pointer' }}
