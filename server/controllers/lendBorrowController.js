@@ -1,4 +1,6 @@
 const LendBorrow = require('../models/LendBorrow');
+const BankAccount = require('../models/BankAccount');
+const Transaction = require('../models/Transaction');
 
 const attachRemaining = (record) => {
   const totalRepaid = record.repayments.reduce((sum, r) => sum + r.amount, 0);
@@ -49,10 +51,15 @@ exports.getRecords = async (req, res) => {
   }
 };
 
-// POST /api/v1/lend-borrow/:id/repayments - add a partial or full repayment
+// POST /api/v1/lend-borrow/:id/repayments - add a partial or full repayment.
+// If accountId is provided, this ALSO creates a real transaction that
+// actually moves money: a 'lend' repayment credits the account (you're
+// getting money back), a 'borrow' repayment debits it (you're paying
+// money out). Without accountId, it's tracked as before with no
+// account impact - both behaviors are supported.
 exports.addRepayment = async (req, res) => {
   try {
-    const { amount, date, note } = req.body;
+    const { amount, date, note, accountId } = req.body;
 
     if (!amount) {
       return res.status(400).json({ message: 'amount is required' });
@@ -63,7 +70,36 @@ exports.addRepayment = async (req, res) => {
       return res.status(404).json({ message: 'Record not found' });
     }
 
-    record.repayments.push({ amount, date, note });
+    const repaymentDate = date ? new Date(date) : new Date();
+    let transactionId;
+
+    if (accountId) {
+      const account = await BankAccount.findOne({ _id: accountId, userId: req.user.id });
+      if (!account) {
+        return res.status(404).json({ message: 'Account not found' });
+      }
+
+      const transaction = await Transaction.create({
+        userId: req.user.id,
+        accountId,
+        amount,
+        // lend repayment = money coming back to you = a credit ('refund'
+        // fits better than 'income', since it's your own principal
+        // returning, not new earnings). borrow repayment = you paying
+        // money out = a real expense.
+        type: record.type === 'lend' ? 'refund' : 'expense',
+        category: 'other',
+        paymentMethod: 'other',
+        date: repaymentDate,
+        description:
+          record.type === 'lend'
+            ? `Repayment received from ${record.personName}`
+            : `Repayment paid to ${record.personName}`,
+      });
+      transactionId = transaction._id;
+    }
+
+    record.repayments.push({ amount, date: repaymentDate, note, accountId, transactionId });
 
     const totalRepaid = record.repayments.reduce((sum, r) => sum + r.amount, 0);
     if (totalRepaid >= record.amount) {

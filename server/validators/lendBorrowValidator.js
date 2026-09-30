@@ -12,4 +12,5 @@ exports.repaymentValidator = [
   body('amount').isFloat({ gt: 0 }).withMessage('Repayment amount must be greater than 0'),
   body('date').optional().isISO8601().withMessage('Date must be valid'),
   body('note').optional().trim().isLength({ max: 200 }).withMessage('Note too long'),
+  body('accountId').optional().isMongoId().withMessage('accountId must be a valid account'),
 ];

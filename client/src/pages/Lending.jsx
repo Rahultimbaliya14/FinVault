@@ -4,11 +4,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import Select from '../components/Select';
 import { useToast } from '../context/ToastContext';
 import { fetchLendBorrowRecords, createLendBorrowRecord, addRepayment, deleteLendBorrowRecord } from '../api/lendBorrow';
-
-const LEND_BORROW_TYPES = [
-  { value: 'lend', label: 'I Lent Money (They Owe Me)' },
-  { value: 'borrow', label: 'I Borrowed Money (I Owe Them)' },
-];
+import { fetchAccounts } from '../api/accounts';
 
 const formatCurrency = (amount) => `₹${Math.round(amount || 0).toLocaleString('en-IN')}`;
 
@@ -18,21 +14,28 @@ const STATUS_LABEL = { pending: 'Pending', partial: 'Partially paid', settled: '
 const Lending = () => {
   const { showToast } = useToast();
   const [records, setRecords] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
 
+  // Repayment mini-form state: repayingId identifies which record's
+  // form is open, mode is 'partial' (log any amount) or 'settle'
+  // (pre-filled with the full remaining amount, one click to close it out).
   const [repayingId, setRepayingId] = useState(null);
+  const [repayMode, setRepayMode] = useState('partial');
   const [repayAmount, setRepayAmount] = useState('');
+  const [repayAccountId, setRepayAccountId] = useState('');
   const [submittingRepay, setSubmittingRepay] = useState(false);
 
   const [confirmState, setConfirmState] = useState({ open: false, id: null });
 
-  const loadRecords = async () => {
+  const loadData = async () => {
     try {
-      const res = await fetchLendBorrowRecords();
-      setRecords(res.data.records);
+      const [recordsRes, accountsRes] = await Promise.all([fetchLendBorrowRecords(), fetchAccounts()]);
+      setRecords(recordsRes.data.records);
+      setAccounts(accountsRes.data.accounts);
     } catch (err) {
       showToast('Could not load records.', 'error');
     } finally {
@@ -41,7 +44,7 @@ const Lending = () => {
   };
 
   useEffect(() => {
-    loadRecords();
+    loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -54,7 +57,7 @@ const Lending = () => {
       await createLendBorrowRecord({ ...form, amount: Number(form.amount) });
       setForm(EMPTY_FORM);
       setShowForm(false);
-      loadRecords();
+      loadData();
       showToast(`${form.type === 'lend' ? 'Lending' : 'Borrowing'} record added`, 'success');
     } catch (err) {
       showToast(err.response?.data?.message || 'Could not add record.', 'error');
@@ -63,18 +66,38 @@ const Lending = () => {
     }
   };
 
-  const handleLogRepayment = async (id) => {
+  const openRepayForm = (record, mode) => {
+    setRepayingId(repayingId === record._id && repayMode === mode ? null : record._id);
+    setRepayMode(mode);
+    setRepayAmount(mode === 'settle' ? String(record.remainingAmount) : '');
+    setRepayAccountId('');
+  };
+
+  const handleLogRepayment = async (record) => {
     if (!repayAmount || Number(repayAmount) <= 0) {
       showToast('Enter a valid repayment amount.', 'error');
       return;
     }
+    if (repayMode === 'settle' && !repayAccountId) {
+      showToast('Select an account to settle into.', 'error');
+      return;
+    }
     setSubmittingRepay(true);
     try {
-      await addRepayment(id, { amount: Number(repayAmount) });
+      await addRepayment(record._id, {
+        amount: Number(repayAmount),
+        accountId: repayAccountId || undefined,
+      });
       setRepayingId(null);
       setRepayAmount('');
-      loadRecords();
-      showToast('Repayment logged', 'success');
+      setRepayAccountId('');
+      loadData();
+      showToast(
+        repayAccountId
+          ? `${formatCurrency(repayAmount)} ${record.type === 'lend' ? 'added to' : 'deducted from'} account`
+          : 'Repayment logged',
+        'success'
+      );
     } catch (err) {
       showToast(err.response?.data?.message || 'Could not log repayment.', 'error');
     } finally {
@@ -85,7 +108,7 @@ const Lending = () => {
   const handleConfirmDelete = async () => {
     try {
       await deleteLendBorrowRecord(confirmState.id);
-      loadRecords();
+      loadData();
       showToast('Record deleted', 'success');
     } catch (err) {
       showToast('Could not delete record.', 'error');
@@ -108,17 +131,26 @@ const Lending = () => {
             {record.description && ` · ${record.description}`}
           </div>
         </div>
-        <div className="d-flex align-items-center gap-3">
+        <div className="d-flex align-items-center gap-3 flex-wrap justify-content-end">
           <span className={`ledger-row-value ${record.type === 'lend' ? 'value-positive' : 'value-negative'}`}>
             {formatCurrency(record.remainingAmount)}
           </span>
           {record.status !== 'settled' && (
-            <button
-              onClick={() => { setRepayingId(repayingId === record._id ? null : record._id); setRepayAmount(''); }}
-              style={{ background: 'none', border: 'none', color: 'var(--emerald)', fontSize: '0.8rem', cursor: 'pointer' }}
-            >
-              Log repayment
-            </button>
+            <>
+              <button
+                onClick={() => openRepayForm(record, 'settle')}
+                className="btn-ledger"
+                style={{ padding: '0.35rem 0.7rem', fontSize: '0.75rem' }}
+              >
+                Settle
+              </button>
+              <button
+                onClick={() => openRepayForm(record, 'partial')}
+                style={{ background: 'none', border: '1px solid var(--rule-strong)', borderRadius: '2px', padding: '0.35rem 0.7rem', fontSize: '0.75rem', color: 'var(--ink-text)' }}
+              >
+                Log payment
+              </button>
+            </>
           )}
           <button
             onClick={() => setConfirmState({ open: true, id: record._id })}
@@ -130,19 +162,42 @@ const Lending = () => {
       </div>
 
       {repayingId === record._id && (
-        <div className="d-flex gap-2 mb-2" style={{ paddingLeft: '0.1rem' }}>
-          <input
-            type="number"
-            min="0"
-            placeholder={`Up to ${record.remainingAmount}`}
-            className="input-ledger"
-            style={{ maxWidth: '180px' }}
-            value={repayAmount}
-            onChange={(e) => setRepayAmount(e.target.value)}
-          />
-          <button className="btn-ledger" onClick={() => handleLogRepayment(record._id)} disabled={submittingRepay}>
-            {submittingRepay ? 'Saving…' : 'Save'}
-          </button>
+        <div className="mb-3" style={{ paddingLeft: '0.1rem' }}>
+          <p style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)', marginBottom: '0.4rem' }}>
+            {repayMode === 'settle'
+              ? `Settling the full ${formatCurrency(record.remainingAmount)} — pick which account this ${record.type === 'lend' ? 'goes into' : 'comes out of'}.`
+              : "Optionally link this to an account to actually move real money — leave it unselected to just log the amount."}
+          </p>
+          <div className="row g-2 align-items-end">
+            <div className="col-6 col-md-3">
+              <label style={{ fontSize: '0.75rem', color: 'var(--ink-text-muted)' }}>Amount</label>
+              <input
+                type="number"
+                min="0"
+                className="input-ledger"
+                value={repayAmount}
+                onChange={(e) => setRepayAmount(e.target.value)}
+                disabled={repayMode === 'settle'}
+              />
+            </div>
+            <div className="col-6 col-md-5">
+              <label style={{ fontSize: '0.75rem', color: 'var(--ink-text-muted)' }}>
+                Account {repayMode === 'partial' && '(optional)'}
+              </label>
+              <Select
+                name="repayAccountId"
+                value={repayAccountId}
+                onChange={(e) => setRepayAccountId(e.target.value)}
+                placeholder={repayMode === 'partial' ? "Don't link to an account" : 'Select account'}
+                options={accounts.map((a) => ({ value: a._id, label: `${a.bankName} — ${a.accountName}` }))}
+              />
+            </div>
+            <div className="col-12 col-md-4">
+              <button className="btn-ledger w-100" onClick={() => handleLogRepayment(record)} disabled={submittingRepay}>
+                {submittingRepay ? 'Saving…' : repayMode === 'settle' ? 'Confirm settle' : 'Save'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -172,7 +227,15 @@ const Lending = () => {
               </div>
               <div className="col-md-6">
                 <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Type</label>
-                <Select name="type" value={form.type} onChange={handleChange} options={LEND_BORROW_TYPES} />
+                <Select
+                  name="type"
+                  value={form.type}
+                  onChange={handleChange}
+                  options={[
+                    { value: 'lend', label: 'I Lent Money (They Owe Me)' },
+                    { value: 'borrow', label: 'I Borrowed Money (I Owe Them)' },
+                  ]}
+                />
               </div>
               <div className="col-md-4">
                 <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Amount</label>
@@ -225,7 +288,7 @@ const Lending = () => {
       <ConfirmDialog
         open={confirmState.open}
         title="Delete this record?"
-        message="This permanently removes the record and its repayment history."
+        message="This permanently removes the record and its repayment history. Any linked transactions are NOT reversed."
         confirmLabel="Delete"
         onConfirm={handleConfirmDelete}
         onCancel={() => setConfirmState({ open: false, id: null })}
