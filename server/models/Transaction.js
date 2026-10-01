@@ -17,6 +17,16 @@ const transactionSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    // 'transfer_in'/'transfer_out' are used exclusively by the internal
+    // account-to-account transfer feature.
+    // 'loan_given'/'loan_received' are used exclusively by the Lending &
+    // Borrowing feature, covering BOTH directions of money movement:
+    //   loan_given    = money leaving your account (lending money out,
+    //                   OR paying back money you borrowed)
+    //   loan_received = money entering your account (receiving borrowed
+    //                   money, OR getting repaid on money you lent)
+    // Neither is ever picked directly by the user in the regular
+    // add-transaction form - both are created only by their respective features.
     type: {
       type: String,
       enum: [
@@ -27,6 +37,8 @@ const transactionSchema = new mongoose.Schema(
         'refund',
         'transfer_out',
         'transfer_in',
+        'loan_given',
+        'loan_received',
       ],
       required: true,
     },
@@ -60,7 +72,6 @@ const transactionSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-  
     transferGroupId: {
       type: mongoose.Schema.Types.ObjectId,
     },

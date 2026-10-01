@@ -8,7 +8,7 @@ import { fetchAccounts } from '../api/accounts';
 
 const formatCurrency = (amount) => `₹${Math.round(amount || 0).toLocaleString('en-IN')}`;
 
-const EMPTY_FORM = { personName: '', type: 'lend', amount: '', expectedRepaymentDate: '', description: '' };
+const EMPTY_FORM = { personName: '', type: 'lend', amount: '', expectedRepaymentDate: '', description: '', accountId: '' };
 const STATUS_LABEL = { pending: 'Pending', partial: 'Partially paid', settled: 'Settled' };
 
 const Lending = () => {
@@ -249,8 +249,25 @@ const Lending = () => {
                 <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>Description</label>
                 <input name="description" className="input-ledger" value={form.description} onChange={handleChange} placeholder="Optional" />
               </div>
+              <div className="col-md-6">
+                <label style={{ fontSize: '0.8rem', color: 'var(--ink-text-muted)' }}>
+                  Account {form.type === 'lend' ? '(money leaves this account now)' : '(money arrives in this account now)'}
+                </label>
+                <Select
+                  name="accountId"
+                  value={form.accountId}
+                  onChange={handleChange}
+                  placeholder="Don't link to an account"
+                  options={accounts.map((a) => ({ value: a._id, label: `${a.bankName} — ${a.accountName}` }))}
+                />
+              </div>
             </div>
-            <button type="submit" className="btn-ledger mt-4" disabled={submitting}>
+            <p style={{ fontSize: '0.78rem', color: 'var(--ink-text-muted)', marginTop: '0.6rem' }}>
+              {form.accountId
+                ? `This will immediately ${form.type === 'lend' ? 'deduct' : 'add'} ${formatCurrency(form.amount || 0)} ${form.type === 'lend' ? 'from' : 'to'} the selected account.`
+                : 'Leave the account unselected to just track this without moving any real money.'}
+            </p>
+            <button type="submit" className="btn-ledger mt-2" disabled={submitting}>
               {submitting ? 'Adding…' : 'Add record'}
             </button>
           </form>

@@ -5,9 +5,6 @@ const repaymentSchema = new mongoose.Schema(
     amount: { type: Number, required: true, min: 0 },
     date: { type: Date, required: true, default: Date.now },
     note: { type: String, trim: true },
-    // Optional - if the user links this repayment to a real bank
-    // account, a matching Transaction is created (money actually
-    // added/deducted), and its id is stored here for reference.
     accountId: { type: mongoose.Schema.Types.ObjectId, ref: 'BankAccount' },
     transactionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Transaction' },
   },
@@ -55,6 +52,11 @@ const lendBorrowSchema = new mongoose.Schema(
       enum: ['pending', 'partial', 'settled'],
       default: 'pending',
     },
+    // Optional - if an account was selected AT CREATION TIME, the
+    // initial money movement (lending money OUT, or receiving borrowed
+    // money IN) was recorded as a real transaction, linked here.
+    accountId: { type: mongoose.Schema.Types.ObjectId, ref: 'BankAccount' },
+    transactionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Transaction' },
     repayments: [repaymentSchema],
   },
   { timestamps: true }

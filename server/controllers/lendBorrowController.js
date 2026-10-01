@@ -12,12 +12,40 @@ const attachRemaining = (record) => {
 };
 
 // POST /api/v1/lend-borrow
+// If accountId is provided, the INITIAL money movement is recorded as a
+// real transaction immediately:
+//   - 'lend'   : money leaves your account right now (you're handing it over) -> loan_given
+//   - 'borrow' : money enters your account right now (you're receiving it) -> loan_received
+// Without accountId, it's tracked exactly as before with no account impact.
 exports.createRecord = async (req, res) => {
   try {
-    const { personName, type, amount, date, expectedRepaymentDate, description } = req.body;
+    const { personName, type, amount, date, expectedRepaymentDate, description, accountId } = req.body;
 
     if (!personName || !type || !amount) {
       return res.status(400).json({ message: 'personName, type, and amount are required' });
+    }
+
+    let transactionId;
+    const recordDate = date ? new Date(date) : new Date();
+
+    if (accountId) {
+      const account = await BankAccount.findOne({ _id: accountId, userId: req.user.id });
+      if (!account) {
+        return res.status(404).json({ message: 'Account not found' });
+      }
+
+      const transaction = await Transaction.create({
+        userId: req.user.id,
+        accountId,
+        amount,
+        type: type === 'lend' ? 'loan_given' : 'loan_received',
+        category: 'other',
+        paymentMethod: 'other',
+        date: recordDate,
+        description:
+          type === 'lend' ? `Lent to ${personName}` : `Borrowed from ${personName}`,
+      });
+      transactionId = transaction._id;
     }
 
     const record = await LendBorrow.create({
@@ -25,9 +53,11 @@ exports.createRecord = async (req, res) => {
       personName,
       type,
       amount,
-      date,
+      date: recordDate,
       expectedRepaymentDate,
       description,
+      accountId: accountId || undefined,
+      transactionId,
     });
 
     res.status(201).json({ message: 'Record created', record });
@@ -51,12 +81,13 @@ exports.getRecords = async (req, res) => {
   }
 };
 
-// POST /api/v1/lend-borrow/:id/repayments - add a partial or full repayment.
-// If accountId is provided, this ALSO creates a real transaction that
-// actually moves money: a 'lend' repayment credits the account (you're
-// getting money back), a 'borrow' repayment debits it (you're paying
-// money out). Without accountId, it's tracked as before with no
-// account impact - both behaviors are supported.
+// POST /api/v1/lend-borrow/:id/repayments
+// Settlement direction is the OPPOSITE of creation:
+//   - 'lend'   repayment : money comes BACK to you -> loan_received
+//   - 'borrow' repayment : you pay money OUT        -> loan_given
+// Both loan_given/loan_received are excluded from income/expense totals
+// everywhere (dashboard, reports) since lending/borrowing moves capital
+// you owe or are owed, not money you earned or spent.
 exports.addRepayment = async (req, res) => {
   try {
     const { amount, date, note, accountId } = req.body;
@@ -83,11 +114,7 @@ exports.addRepayment = async (req, res) => {
         userId: req.user.id,
         accountId,
         amount,
-        // lend repayment = money coming back to you = a credit ('refund'
-        // fits better than 'income', since it's your own principal
-        // returning, not new earnings). borrow repayment = you paying
-        // money out = a real expense.
-        type: record.type === 'lend' ? 'refund' : 'expense',
+        type: record.type === 'lend' ? 'loan_received' : 'loan_given',
         category: 'other',
         paymentMethod: 'other',
         date: repaymentDate,

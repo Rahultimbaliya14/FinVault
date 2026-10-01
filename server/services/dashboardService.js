@@ -7,7 +7,11 @@ const IPO = require('../models/Ipo');
 const { getCurrentBalance, getBlockedAmount, CREDIT_TYPES } = require('./balanceService');
 const { getAllUpcomingDues } = require('./duesService');
 
-const TRANSFER_TYPES = ['transfer_in', 'transfer_out'];
+// Neither internal transfers NOR lend/borrow money movement count as
+// real income or expense - a transfer just moves money you already
+// had, and borrowing/lending moves capital you owe or are owed, not
+// money you earned or spent.
+const EXCLUDED_FROM_TOTALS = ['transfer_in', 'transfer_out', 'loan_given', 'loan_received'];
 
 const getMonthRange = (date = new Date()) => {
   const start = new Date(date.getFullYear(), date.getMonth(), 1);
@@ -42,7 +46,7 @@ const getMonthlyTransactionSummary = async (userId) => {
     // A transfer between your own accounts isn't real income or a real
     // expense - it just moves money you already had. Leave it out of
     // both totals entirely so it doesn't distort the monthly picture.
-    if (TRANSFER_TYPES.includes(tx.type)) return;
+    if (EXCLUDED_FROM_TOTALS.includes(tx.type)) return;
 
     if (CREDIT_TYPES.includes(tx.type)) {
       totalIncome += tx.amount;

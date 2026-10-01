@@ -6,11 +6,14 @@ exports.createRecordValidator = [
   body('amount').isFloat({ gt: 0 }).withMessage('Amount must be greater than 0'),
   body('expectedRepaymentDate').optional().isISO8601().withMessage('Expected repayment date must be valid'),
   body('description').optional().trim().isLength({ max: 200 }).withMessage('Description too long'),
+  // checkFalsy: true so an unselected dropdown (sent as '') is treated
+  // as "not provided" instead of failing isMongoId on an empty string.
+  body('accountId').optional({ checkFalsy: true }).isMongoId().withMessage('accountId must be a valid account'),
 ];
 
 exports.repaymentValidator = [
   body('amount').isFloat({ gt: 0 }).withMessage('Repayment amount must be greater than 0'),
   body('date').optional().isISO8601().withMessage('Date must be valid'),
   body('note').optional().trim().isLength({ max: 200 }).withMessage('Note too long'),
-  body('accountId').optional().isMongoId().withMessage('accountId must be a valid account'),
+  body('accountId').optional({ checkFalsy: true }).isMongoId().withMessage('accountId must be a valid account'),
 ];
